@@ -213,10 +213,10 @@ export async function generateSaleInvoicePdfBlob(
     metaBoxW - 36,
   );
 
-  // Info Cards Row (Customer Name, Phone, Payment Status)
+  // Info Cards Row (Customer Name, Phone, Cashier Name, Payment Status)
   let cursorY = margin + headerH + 32;
-  const infoGap = 20;
-  const infoCardW = (cardW - infoGap * 2) / 3;
+  const infoGap = 16;
+  const infoCardW = (cardW - infoGap * 3) / 4;
   const infoCardH = 104;
 
   const infoItems = [
@@ -230,6 +230,12 @@ export async function generateSaleInvoicePdfBlob(
       label: "رقم هاتف العميل",
       value: sale.customerPhone?.trim() || "—",
       isLtr: true,
+      accent: false,
+    },
+    {
+      label: "اسم الكاشير",
+      value: sale.cashierName?.trim() || "—",
+      isLtr: false,
       accent: false,
     },
     {
@@ -617,7 +623,7 @@ export function PrintableSaleInvoiceModal({
                 معاينة الفاتورة الرسمية القابلة للطباعة (PDF)
               </h3>
               <p className="text-xs text-muted">
-                ملف PDF حقيقي بدون تاريخ أو رابط المتصفح وبدون بيانات الكاشير
+                ملف PDF حقيقي بدون تاريخ أو رابط المتصفح
               </p>
             </div>
           </div>
@@ -726,8 +732,8 @@ export function PrintableSaleInvoiceModal({
 
             {/* Body */}
             <div className="p-6 space-y-6">
-              {/* Customer & Payment Status Row (No ID, No Cashier) */}
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              {/* Customer, Cashier & Payment Status Row */}
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 <div className="rounded-xl border border-border bg-background/60 p-3.5">
                   <span className="flex items-center gap-1.5 text-[11px] text-muted">
                     <User className="h-3.5 w-3.5 text-[#2563EB]" />
@@ -748,6 +754,16 @@ export function PrintableSaleInvoiceModal({
                     className="mt-1 block text-right font-mono text-xs sm:text-sm font-bold text-foreground"
                   >
                     {sale.customerPhone?.trim() || "—"}
+                  </strong>
+                </div>
+
+                <div className="rounded-xl border border-border bg-background/60 p-3.5">
+                  <span className="flex items-center gap-1.5 text-[11px] text-muted">
+                    <User className="h-3.5 w-3.5 text-[#2563EB]" />
+                    اسم الكاشير
+                  </span>
+                  <strong className="mt-1 block text-xs sm:text-sm font-bold text-foreground">
+                    {sale.cashierName?.trim() || "—"}
                   </strong>
                 </div>
 
