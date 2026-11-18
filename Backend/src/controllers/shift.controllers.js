@@ -227,6 +227,13 @@ const getShiftSummary = async (req, res) => {
       shift.totalDeposits -
       shift.totalWithdrawals;
 
+    const totalVisaSales = shift.totalVisaSales || 0;
+    const totalVisaRefunds = shift.totalVisaRefunds || 0;
+    const totalInstapaySales = shift.totalInstapaySales || 0;
+    const totalInstapayRefunds = shift.totalInstapayRefunds || 0;
+    const totalWalletSales = shift.totalWalletSales || 0;
+    const totalWalletRefunds = shift.totalWalletRefunds || 0;
+
     return res.status(200).json({
       success: true,
       message: "Shift summary retrieved successfully",
@@ -240,6 +247,22 @@ const getShiftSummary = async (req, res) => {
         totalCashRefunds: shift.totalCashRefunds,
         totalDeposits: shift.totalDeposits,
         totalWithdrawals: shift.totalWithdrawals,
+
+        totalVisaSales,
+        totalVisaRefunds,
+        expectedVisa: Number((totalVisaSales - totalVisaRefunds).toFixed(2)),
+
+        totalInstapaySales,
+        totalInstapayRefunds,
+        expectedInstapay: Number(
+          (totalInstapaySales - totalInstapayRefunds).toFixed(2),
+        ),
+
+        totalWalletSales,
+        totalWalletRefunds,
+        expectedWallet: Number(
+          (totalWalletSales - totalWalletRefunds).toFixed(2),
+        ),
 
         expectedCash,
         movements: shift.movements,
@@ -259,7 +282,12 @@ const closeShift = async (req, res) => {
   const session = await mongoose.startSession();
 
   try {
-    const { closingCash } = req.body || {};
+    const {
+      closingCash,
+      closingVisa,
+      closingInstapay,
+      closingWallet,
+    } = req.body || {};
 
     // 1. Validate actual counted cash
     if (
@@ -271,6 +299,29 @@ const closeShift = async (req, res) => {
         success: false,
         message: "Closing cash must be a valid non-negative number",
       });
+    }
+
+    const optionalFields = [
+      { key: "closingVisa", val: closingVisa, label: "Closing Visa" },
+      {
+        key: "closingInstapay",
+        val: closingInstapay,
+        label: "Closing InstaPay",
+      },
+      { key: "closingWallet", val: closingWallet, label: "Closing Wallet" },
+    ];
+    for (const field of optionalFields) {
+      if (
+        field.val !== undefined &&
+        (typeof field.val !== "number" ||
+          !Number.isFinite(field.val) ||
+          field.val < 0)
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: `${field.label} must be a valid non-negative number`,
+        });
+      }
     }
 
     if (!req.user?._id) {
@@ -293,7 +344,7 @@ const closeShift = async (req, res) => {
         throw new Error("SHIFT_NOT_OPEN");
       }
 
-      // 3. Calculate expected cash
+      // 3. Calculate expected cash & non-cash totals
       const expectedCash = Number(
         (
           shift.openingCash +
@@ -304,9 +355,58 @@ const closeShift = async (req, res) => {
         ).toFixed(2),
       );
 
+      const expectedVisa = Number(
+        ((shift.totalVisaSales || 0) - (shift.totalVisaRefunds || 0)).toFixed(
+          2,
+        ),
+      );
+      const expectedInstapay = Number(
+        (
+          (shift.totalInstapaySales || 0) -
+          (shift.totalInstapayRefunds || 0)
+        ).toFixed(2),
+      );
+      const expectedWallet = Number(
+        (
+          (shift.totalWalletSales || 0) -
+          (shift.totalWalletRefunds || 0)
+        ).toFixed(2),
+      );
+
       // 4. Calculate shortage or overage
       const actualCash = Number(closingCash.toFixed(2));
       const difference = Number((actualCash - expectedCash).toFixed(2));
+
+      const setPayload = {
+        closingCash: actualCash,
+        expectedCash,
+        difference,
+        expectedVisa,
+        expectedInstapay,
+        expectedWallet,
+        status: "closed",
+        closedAt: new Date(),
+      };
+
+      if (closingVisa !== undefined) {
+        const actualVisa = Number(closingVisa.toFixed(2));
+        setPayload.closingVisa = actualVisa;
+        setPayload.visaDifference = Number((actualVisa - expectedVisa).toFixed(2));
+      }
+      if (closingInstapay !== undefined) {
+        const actualInstapay = Number(closingInstapay.toFixed(2));
+        setPayload.closingInstapay = actualInstapay;
+        setPayload.instapayDifference = Number(
+          (actualInstapay - expectedInstapay).toFixed(2),
+        );
+      }
+      if (closingWallet !== undefined) {
+        const actualWallet = Number(closingWallet.toFixed(2));
+        setPayload.closingWallet = actualWallet;
+        setPayload.walletDifference = Number(
+          (actualWallet - expectedWallet).toFixed(2),
+        );
+      }
 
       // 5. Close shift atomically
       closedShift = await Shift.findOneAndUpdate(
@@ -316,13 +416,7 @@ const closeShift = async (req, res) => {
           status: "open",
         },
         {
-          $set: {
-            closingCash: actualCash,
-            expectedCash,
-            difference,
-            status: "closed",
-            closedAt: new Date(),
-          },
+          $set: setPayload,
         },
         {
           new: true,
@@ -344,6 +438,15 @@ const closeShift = async (req, res) => {
         expectedCash: closedShift.expectedCash,
         actualCash: closedShift.closingCash,
         difference: closedShift.difference,
+        expectedVisa: closedShift.expectedVisa,
+        actualVisa: closedShift.closingVisa,
+        visaDifference: closedShift.visaDifference,
+        expectedInstapay: closedShift.expectedInstapay,
+        actualInstapay: closedShift.closingInstapay,
+        instapayDifference: closedShift.instapayDifference,
+        expectedWallet: closedShift.expectedWallet,
+        actualWallet: closedShift.closingWallet,
+        walletDifference: closedShift.walletDifference,
         status:
           closedShift.difference === 0
             ? "balanced"

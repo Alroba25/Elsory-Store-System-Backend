@@ -60,7 +60,43 @@ const shiftSchema = new mongoose.Schema(
       min: 0,
     },
 
+    totalVisaSales: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
+    totalInstapaySales: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
+    totalWalletSales: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
     totalCashRefunds: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
+    totalVisaRefunds: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
+    totalInstapayRefunds: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
+    totalWalletRefunds: {
       type: Number,
       default: 0,
       min: 0,
@@ -84,6 +120,45 @@ const shiftSchema = new mongoose.Schema(
     },
 
     difference: {
+      type: Number,
+    },
+
+    closingVisa: {
+      type: Number,
+      min: 0,
+    },
+
+    expectedVisa: {
+      type: Number,
+    },
+
+    visaDifference: {
+      type: Number,
+    },
+
+    closingInstapay: {
+      type: Number,
+      min: 0,
+    },
+
+    expectedInstapay: {
+      type: Number,
+    },
+
+    instapayDifference: {
+      type: Number,
+    },
+
+    closingWallet: {
+      type: Number,
+      min: 0,
+    },
+
+    expectedWallet: {
+      type: Number,
+    },
+
+    walletDifference: {
       type: Number,
     },
 

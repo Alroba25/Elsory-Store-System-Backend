@@ -91,10 +91,16 @@ const createSale = async (req, res) => {
         throw new Error("SHIFT_NOT_OPEN");
       }
 
-      // 2. Calculate cash payments only
-      const cashPaymentsTotal = payments
-        .filter((payment) => payment.method === "cash")
-        .reduce((total, payment) => total + payment.amount, 0);
+      // 2. Calculate payments per method
+      const sumByMethod = (method) =>
+        payments
+          .filter((payment) => payment.method === method)
+          .reduce((total, payment) => total + payment.amount, 0);
+
+      const cashPaymentsTotal = sumByMethod("cash");
+      const visaPaymentsTotal = sumByMethod("visa");
+      const instapayPaymentsTotal = sumByMethod("instapay");
+      const walletPaymentsTotal = sumByMethod("wallet");
 
       const saleItems = [];
 
@@ -188,7 +194,7 @@ const createSale = async (req, res) => {
         { session },
       );
 
-      // 8. Update shift cash total
+      // 8. Update shift totals across all payment methods
       const updatedShift = await Shift.findOneAndUpdate(
         {
           _id: shift._id,
@@ -197,6 +203,9 @@ const createSale = async (req, res) => {
         {
           $inc: {
             totalCashSales: cashPaymentsTotal,
+            totalVisaSales: visaPaymentsTotal,
+            totalInstapaySales: instapayPaymentsTotal,
+            totalWalletSales: walletPaymentsTotal,
           },
         },
         {

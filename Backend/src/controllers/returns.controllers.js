@@ -383,8 +383,16 @@ const processRefund = async (req, res) => {
 
       await sale.save({ session });
 
-      // 9. Deduct from drawer only for cash refunds
-      if (method === "cash") {
+      // 9. Track refund on current open shift for the corresponding payment method
+      const refundFieldByMethod = {
+        cash: "totalCashRefunds",
+        visa: "totalVisaRefunds",
+        instapay: "totalInstapayRefunds",
+        wallet: "totalWalletRefunds",
+      };
+      const refundField = refundFieldByMethod[method];
+
+      if (refundField) {
         const updatedShiftDoc = await Shift.findOneAndUpdate(
           {
             _id: shift._id,
@@ -393,7 +401,7 @@ const processRefund = async (req, res) => {
           },
           {
             $inc: {
-              totalCashRefunds: amount,
+              [refundField]: amount,
             },
           },
           {
