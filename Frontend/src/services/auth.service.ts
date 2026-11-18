@@ -259,7 +259,8 @@ export async function forgotPassword(
 
   if (response.status >= 500) {
     throw new AuthServiceError(
-      "حدث خطأ بالسيرفر أثناء معالجة الطلب، حاول مرة أخرى لاحقًا.",
+      data.message?.trim() ||
+        "حدث خطأ بالسيرفر أثناء معالجة الطلب، حاول مرة أخرى لاحقًا.",
       response.status,
     );
   }
