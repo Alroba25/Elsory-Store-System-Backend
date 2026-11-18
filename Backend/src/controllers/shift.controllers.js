@@ -644,6 +644,14 @@ const getShiftReports = async (req, res) => {
 
           totalCashSales: { $sum: "$totalCashSales" },
           totalCashRefunds: { $sum: "$totalCashRefunds" },
+          totalVisaSales: { $sum: { $ifNull: ["$totalVisaSales", 0] } },
+          totalVisaRefunds: { $sum: { $ifNull: ["$totalVisaRefunds", 0] } },
+          totalInstapaySales: { $sum: { $ifNull: ["$totalInstapaySales", 0] } },
+          totalInstapayRefunds: {
+            $sum: { $ifNull: ["$totalInstapayRefunds", 0] },
+          },
+          totalWalletSales: { $sum: { $ifNull: ["$totalWalletSales", 0] } },
+          totalWalletRefunds: { $sum: { $ifNull: ["$totalWalletRefunds", 0] } },
           totalDeposits: { $sum: "$totalDeposits" },
           totalWithdrawals: { $sum: "$totalWithdrawals" },
 
@@ -672,6 +680,96 @@ const getShiftReports = async (req, res) => {
                   ],
                 },
                 "$difference",
+                0,
+              ],
+            },
+          },
+
+          totalVisaShortage: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $eq: ["$status", "closed"] },
+                    { $lt: [{ $ifNull: ["$visaDifference", 0] }, 0] },
+                  ],
+                },
+                { $abs: { $ifNull: ["$visaDifference", 0] } },
+                0,
+              ],
+            },
+          },
+
+          totalVisaOverage: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $eq: ["$status", "closed"] },
+                    { $gt: [{ $ifNull: ["$visaDifference", 0] }, 0] },
+                  ],
+                },
+                { $ifNull: ["$visaDifference", 0] },
+                0,
+              ],
+            },
+          },
+
+          totalInstapayShortage: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $eq: ["$status", "closed"] },
+                    { $lt: [{ $ifNull: ["$instapayDifference", 0] }, 0] },
+                  ],
+                },
+                { $abs: { $ifNull: ["$instapayDifference", 0] } },
+                0,
+              ],
+            },
+          },
+
+          totalInstapayOverage: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $eq: ["$status", "closed"] },
+                    { $gt: [{ $ifNull: ["$instapayDifference", 0] }, 0] },
+                  ],
+                },
+                { $ifNull: ["$instapayDifference", 0] },
+                0,
+              ],
+            },
+          },
+
+          totalWalletShortage: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $eq: ["$status", "closed"] },
+                    { $lt: [{ $ifNull: ["$walletDifference", 0] }, 0] },
+                  ],
+                },
+                { $abs: { $ifNull: ["$walletDifference", 0] } },
+                0,
+              ],
+            },
+          },
+
+          totalWalletOverage: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $eq: ["$status", "closed"] },
+                    { $gt: [{ $ifNull: ["$walletDifference", 0] }, 0] },
+                  ],
+                },
+                { $ifNull: ["$walletDifference", 0] },
                 0,
               ],
             },

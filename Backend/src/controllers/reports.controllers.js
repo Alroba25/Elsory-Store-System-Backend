@@ -48,6 +48,8 @@ const getSalesReport = async (req, res) => {
       dailySalesRows,
       dailyReturnsRows,
       dailyRefundsRows,
+      salesByMethodRows,
+      refundsByMethodRows,
     ] = await Promise.all([
       Sale.aggregate([
         { $match: saleFilter },
@@ -232,6 +234,34 @@ const getSalesReport = async (req, res) => {
         },
         { $sort: { _id: 1 } },
       ]),
+      Sale.aggregate([
+        { $match: saleFilter },
+        { $unwind: "$payments" },
+        {
+          $group: {
+            _id: "$payments.method",
+            collected: { $sum: { $ifNull: ["$payments.amount", 0] } },
+          },
+        },
+      ]),
+      Return.aggregate([
+        { $match: { status: "completed" } },
+        { $unwind: "$refundPayments" },
+        {
+          $match: {
+            "refundPayments.refundedAt": {
+              $gte: range.start,
+              $lt: range.endExclusive,
+            },
+          },
+        },
+        {
+          $group: {
+            _id: "$refundPayments.method",
+            refunded: { $sum: { $ifNull: ["$refundPayments.amount", 0] } },
+          },
+        },
+      ]),
     ]);
 
     const salesData = sales[0] || {
@@ -306,6 +336,36 @@ const getSalesReport = async (req, res) => {
         netCashFlow: entry.collectedAmount - entry.refundedAmount,
       }));
 
+    const paymentMethods = {
+      cash: { collected: 0, refunded: 0, net: 0 },
+      visa: { collected: 0, refunded: 0, net: 0 },
+      instapay: { collected: 0, refunded: 0, net: 0 },
+      wallet: { collected: 0, refunded: 0, net: 0 },
+    };
+
+    for (const row of salesByMethodRows) {
+      if (row._id && paymentMethods[row._id]) {
+        paymentMethods[row._id].collected = Number(
+          (row.collected || 0).toFixed(2),
+        );
+      }
+    }
+    for (const row of refundsByMethodRows) {
+      if (row._id && paymentMethods[row._id]) {
+        paymentMethods[row._id].refunded = Number(
+          (row.refunded || 0).toFixed(2),
+        );
+      }
+    }
+    for (const methodKey of Object.keys(paymentMethods)) {
+      paymentMethods[methodKey].net = Number(
+        (
+          paymentMethods[methodKey].collected -
+          paymentMethods[methodKey].refunded
+        ).toFixed(2),
+      );
+    }
+
     return res.status(200).json({
       success: true,
       period: {
@@ -342,6 +402,7 @@ const getSalesReport = async (req, res) => {
           salesData.netSales - returnsData.totalReturnedAmount,
         netCashFlow:
           salesData.collectedAmount - refundsData.actualRefundedAmount,
+        paymentMethods,
         timeline,
       },
     });
