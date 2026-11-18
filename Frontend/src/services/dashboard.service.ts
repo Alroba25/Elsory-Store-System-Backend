@@ -1,9 +1,6 @@
 import type { StoreUserRole } from "@/src/components/dashboard/dashboard-config";
 
-const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL?.trim() || "").replace(
-  /\/$/,
-  "",
-);
+const API_BASE_URL = "/api";
 
 export class DashboardApiError extends Error {
   public readonly status?: number;

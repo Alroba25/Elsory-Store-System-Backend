@@ -15,6 +15,20 @@ const nextConfig: NextConfig = {
       },
     },
   },
+  async rewrites() {
+    const backendTarget = (
+      process.env.BACKEND_API_URL?.trim() ||
+      process.env.NEXT_PUBLIC_API_URL?.trim() ||
+      "http://localhost:5000"
+    ).replace(/\/$/, "");
+
+    return [
+      {
+        source: "/api/:path*",
+        destination: `${backendTarget}/:path*`,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

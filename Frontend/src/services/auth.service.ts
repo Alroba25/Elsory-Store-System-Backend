@@ -38,15 +38,7 @@ function getAuthEndpoint(
     | "/forgot-password"
     | "/reset-password",
 ): string {
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
-
-  if (!baseUrl) {
-    return path;
-  }
-
-  const normalizedBase = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
-
-  return `${normalizedBase}${path}`;
+  return `/api${path}`;
 }
 
 export async function loginWithCredentials(
