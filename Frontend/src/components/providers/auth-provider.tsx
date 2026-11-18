@@ -21,20 +21,23 @@ interface AuthContextType {
   user: AuthUser | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  refreshUser: () => Promise<void>;
+  refreshUser: () => Promise<AuthUser | null>;
   clearUser: () => void;
   logout: () => Promise<string>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL?.trim() || "";
+const API_URL = (process.env.NEXT_PUBLIC_API_URL?.trim() || "").replace(
+  /\/$/,
+  "",
+);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const refreshUser = useCallback(async () => {
+  const refreshUser = useCallback(async (): Promise<AuthUser | null> => {
     try {
       const response = await fetch(`${API_URL}/profile`, {
         method: "GET",
@@ -47,27 +50,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (!response.ok) {
         setUser(null);
-        return;
+        return null;
       }
 
       const data = await response.json();
 
       if (!data.success || !data.user) {
         setUser(null);
-        return;
+        return null;
       }
 
       const profile = data.user;
-
-      setUser({
+      const nextUser: AuthUser = {
         id: profile.id ?? profile._id,
         name: profile.name,
         email: profile.email,
         role: profile.role,
         isActive: profile.isActive,
-      });
+      };
+
+      setUser(nextUser);
+      return nextUser;
     } catch {
       setUser(null);
+      return null;
     }
   }, []);
 

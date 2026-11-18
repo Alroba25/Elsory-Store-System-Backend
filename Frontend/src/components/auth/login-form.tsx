@@ -206,10 +206,17 @@ export function LoginForm({
         email: values.email,
         password: values.password,
       });
-      await refreshUser();
+      const authenticatedUser = await refreshUser();
+      if (!authenticatedUser) {
+        const sessionErrorMessage =
+          "تم تسجيل الدخول ولكن تعذر التحقق من الجلسة. تأكد من تفعيل ملفات تعريف الارتباط (Cookies) وحاول مرة أخرى.";
+        setErrors({ form: sessionErrorMessage });
+        toast.error(sessionErrorMessage);
+        return;
+      }
       toast.success(result.message);
 
-      router.push("/dashboard");
+      router.replace("/dashboard");
       router.refresh();
     } catch (error: unknown) {
       const errorMessage =
