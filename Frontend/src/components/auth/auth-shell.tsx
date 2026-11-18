@@ -67,9 +67,7 @@ export function AuthShell({
           aria-label={
             mode === "register"
               ? "إنشاء حساب جديد في النظام"
-              : mode === "forgot-password"
-                ? "استعادة كلمة المرور"
-                : "تسجيل الدخول إلى النظام"
+              : "تسجيل الدخول إلى النظام"
           }
           className="my-auto py-8 sm:py-10 w-full"
         >

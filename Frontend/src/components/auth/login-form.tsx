@@ -5,26 +5,22 @@ import { useRouter } from "next/navigation";
 import {
   AlertCircle,
   ArrowLeft,
-  ArrowRight,
   CheckCircle2,
   Eye,
   EyeOff,
   Loader2,
   Lock,
   Mail,
-  Send,
   User,
   UserPlus,
 } from "lucide-react";
 import {
   AuthServiceError,
-  forgotPassword,
   loginWithCredentials,
   registerUser,
 } from "@/src/services/auth.service";
 import type {
   AuthMode,
-  ForgotPasswordFormErrors,
   LoginFormErrors,
   LoginFormValues,
   RegisterFormErrors,
@@ -142,16 +138,6 @@ export function LoginForm({
     useState<boolean>(false);
   const [isRegisterSubmitting, setIsRegisterSubmitting] =
     useState<boolean>(false);
-
-  // 3. Forgot Password State
-  const [forgotEmail, setForgotEmail] = useState<string>("");
-  const [forgotErrors, setForgotErrors] = useState<ForgotPasswordFormErrors>(
-    {},
-  );
-  const [isForgotSubmitting, setIsForgotSubmitting] = useState<boolean>(false);
-  const [forgotSuccessMessage, setForgotSuccessMessage] = useState<
-    string | null
-  >(null);
 
   // Login Handlers
   const handleEmailChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -319,69 +305,17 @@ export function LoginForm({
     }
   };
 
-  // Forgot Password Handlers
-  const handleOpenForgotPassword = () => {
-    if (values.email.trim() && !forgotEmail.trim()) {
-      setForgotEmail(values.email.trim());
-    }
-    setForgotErrors({});
-    setForgotSuccessMessage(null);
-    handleSelectMode("forgot-password");
-  };
-
-  const handleForgotEmailChange = (event: ChangeEvent<HTMLInputElement>) => {
-    setForgotEmail(event.target.value);
-    if (forgotErrors.email || forgotErrors.form) {
-      setForgotErrors({});
-    }
-  };
-
-  const handleForgotSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (isForgotSubmitting) return;
-
-    const trimmedEmail = forgotEmail.trim().toLowerCase();
-    if (!trimmedEmail) {
-      setForgotErrors({ email: "البريد الإلكتروني مطلوب" });
-      return;
-    }
-    if (!EMAIL_REGEX.test(trimmedEmail)) {
-      setForgotErrors({ email: "يرجى إدخال بريد إلكتروني صحيح" });
-      return;
-    }
-
-    setForgotErrors({});
-    setIsForgotSubmitting(true);
-
-    try {
-      const result = await forgotPassword(trimmedEmail);
-      setForgotSuccessMessage(result.message);
-      toast.success(result.message);
-    } catch (error: unknown) {
-      const errorMessage =
-        error instanceof AuthServiceError
-          ? error.message
-          : "حدث خطأ بالسيرفر أثناء معالجة الطلب، حاول مرة أخرى لاحقًا.";
-
-      setForgotErrors({ form: errorMessage });
-      toast.error(errorMessage);
-    } finally {
-      setIsForgotSubmitting(false);
-    }
-  };
-
-  const isBusy = isSubmitting || isRegisterSubmitting || isForgotSubmitting;
+  const isBusy = isSubmitting || isRegisterSubmitting;
 
   return (
     <div className="w-full max-w-110 mx-auto">
       <div className="rounded-2xl border border-border bg-surface p-6 sm:p-8 lg:p-10 shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_16px_40px_rgb(0,0,0,0.45)] transition-colors duration-200">
-        {/* Segmented Mode Switcher Tabs (Shown in Login & Register modes) */}
-        {activeMode !== "forgot-password" ? (
-          <div
-            role="tablist"
-            aria-label="اختيار تسجيل الدخول أو إنشاء حساب"
-            className="mb-7 grid grid-cols-2 gap-1.5 rounded-xl border border-border bg-background p-1.5"
-          >
+        {/* Segmented Mode Switcher Tabs (Login & Register modes) */}
+        <div
+          role="tablist"
+          aria-label="اختيار تسجيل الدخول أو إنشاء حساب"
+          className="mb-7 grid grid-cols-2 gap-1.5 rounded-xl border border-border bg-background p-1.5"
+        >
             <button
               type="button"
               role="tab"
@@ -416,7 +350,6 @@ export function LoginForm({
               إنشاء حساب
             </button>
           </div>
-        ) : null}
 
         {/* VIEW 1: LOGIN */}
         {activeMode === "login" ? (
@@ -604,15 +537,6 @@ export function LoginForm({
                     تذكرني
                   </span>
                 </label>
-
-                <button
-                  type="button"
-                  onClick={handleOpenForgotPassword}
-                  disabled={isSubmitting}
-                  className="text-xs sm:text-sm font-medium text-[#2563EB] transition-colors hover:text-[#1d4ed8] dark:text-[#3b82f6] dark:hover:text-[#60a5fa] focus-visible:rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2563EB] disabled:opacity-50"
-                >
-                  نسيت كلمة المرور؟
-                </button>
               </div>
 
               {/* Submit Button */}
@@ -942,163 +866,6 @@ export function LoginForm({
                 </button>
               </div>
             </form>
-          </div>
-        ) : null}
-
-        {/* VIEW 3: FORGOT PASSWORD */}
-        {activeMode === "forgot-password" ? (
-          <div
-            id="auth-panel-forgot-password"
-            className="transition-opacity duration-300 motion-reduce:transition-none"
-          >
-            {forgotSuccessMessage ? (
-              /* Forgot Password Success State */
-              <div className="py-2 text-center space-y-6">
-                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border border-[#2563EB]/25 bg-[#2563EB]/10 text-[#2563EB]">
-                  <Mail className="h-8 w-8" aria-hidden="true" />
-                </div>
-
-                <div className="space-y-2.5">
-                  <h2 className="text-2xl font-bold tracking-tight text-foreground">
-                    تحقق من بريدك الإلكتروني
-                  </h2>
-                  <p className="text-sm leading-relaxed text-muted">
-                    {forgotSuccessMessage}
-                  </p>
-                </div>
-
-                <div className="pt-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setForgotSuccessMessage(null);
-                      handleSelectMode("login");
-                    }}
-                    className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#242424] dark:bg-[#F5F5F5] px-5 text-sm font-semibold text-[#FFFFFF] dark:text-[#111111] shadow-sm transition-all duration-200 hover:bg-[#111111] dark:hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2563EB]"
-                  >
-                    <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                    <span>العودة إلى تسجيل الدخول</span>
-                  </button>
-                </div>
-              </div>
-            ) : (
-              /* Forgot Password Form State */
-              <>
-                <div className="mb-6 space-y-2 text-right">
-                  <h2 className="text-2xl sm:text-[1.75rem] font-bold tracking-tight text-foreground">
-                    نسيت كلمة المرور؟
-                  </h2>
-                  <p className="text-sm sm:text-[15px] leading-relaxed text-muted">
-                    لا تقلق، أدخل بريدك الإلكتروني المسجل لدينا وسنرسل لك رابطًا
-                    لإعادة تعيين كلمة المرور.
-                  </p>
-                </div>
-
-                {forgotErrors.form ? (
-                  <div
-                    role="alert"
-                    aria-live="assertive"
-                    className="mb-6 flex items-start gap-3 rounded-xl border border-danger/30 bg-danger/10 px-4 py-3.5 text-right text-sm text-danger"
-                  >
-                    <AlertCircle
-                      className="mt-0.5 h-4 w-4 shrink-0 text-danger"
-                      aria-hidden="true"
-                    />
-                    <span className="font-medium leading-relaxed">
-                      {forgotErrors.form}
-                    </span>
-                  </div>
-                ) : null}
-
-                <form
-                  onSubmit={handleForgotSubmit}
-                  noValidate
-                  className="space-y-5"
-                  aria-label="نموذج استعادة كلمة المرور"
-                >
-                  <div className="space-y-2">
-                    <label
-                      htmlFor="forgot-email"
-                      className="block text-sm font-medium text-foreground"
-                    >
-                      البريد الإلكتروني
-                    </label>
-                    <div className="relative">
-                      <span
-                        className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3.5 text-muted"
-                        aria-hidden="true"
-                      >
-                        <Mail className="h-4.5 w-4.5" />
-                      </span>
-                      <input
-                        id="forgot-email"
-                        name="email"
-                        type="email"
-                        inputMode="email"
-                        autoComplete="email"
-                        required
-                        disabled={isForgotSubmitting}
-                        value={forgotEmail}
-                        onChange={handleForgotEmailChange}
-                        placeholder="example@elsory.com"
-                        aria-invalid={Boolean(forgotErrors.email)}
-                        aria-describedby={
-                          forgotErrors.email ? "forgot-email-error" : undefined
-                        }
-                        className={`block h-12 w-full rounded-xl border bg-background pr-11 pl-4 text-right text-sm text-foreground placeholder:text-muted/70 transition-all duration-150 focus:bg-surface focus:outline-none focus:ring-2 disabled:cursor-not-allowed disabled:opacity-60 ${
-                          forgotErrors.email
-                            ? "border-danger focus:border-danger focus:ring-danger/20"
-                            : "border-border hover:border-[#A6A6A6]/70 focus:border-[#2563EB] focus:ring-[#2563EB]/20"
-                        }`}
-                      />
-                    </div>
-                    {forgotErrors.email ? (
-                      <p
-                        id="forgot-email-error"
-                        role="alert"
-                        className="text-xs font-medium text-danger pt-0.5"
-                      >
-                        {forgotErrors.email}
-                      </p>
-                    ) : null}
-                  </div>
-
-                  <div className="space-y-3 pt-1">
-                    <button
-                      type="submit"
-                      disabled={isForgotSubmitting}
-                      aria-busy={isForgotSubmitting}
-                      className="group relative flex h-12 w-full items-center justify-center gap-2.5 rounded-xl bg-[#242424] dark:bg-[#F5F5F5] px-5 text-sm font-semibold text-[#FFFFFF] dark:text-[#111111] shadow-sm transition-all duration-200 hover:bg-[#111111] dark:hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2563EB] active:scale-[0.995] disabled:cursor-not-allowed disabled:opacity-65"
-                    >
-                      {isForgotSubmitting ? (
-                        <>
-                          <Loader2
-                            className="h-4 w-4 animate-spin text-[#2563EB]"
-                            aria-hidden="true"
-                          />
-                          <span>جاري إرسال رابط الاستعادة...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Send className="h-4 w-4" aria-hidden="true" />
-                          <span>إرسال رابط الاستعادة</span>
-                        </>
-                      )}
-                    </button>
-
-                    <button
-                      type="button"
-                      disabled={isForgotSubmitting}
-                      onClick={() => handleSelectMode("login")}
-                      className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-border bg-background px-5 text-xs sm:text-sm font-semibold text-foreground transition-colors hover:bg-surface-secondary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2563EB] disabled:opacity-50"
-                    >
-                      <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                      <span>العودة إلى تسجيل الدخول</span>
-                    </button>
-                  </div>
-                </form>
-              </>
-            )}
           </div>
         ) : null}
       </div>

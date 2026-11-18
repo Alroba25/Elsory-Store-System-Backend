@@ -1,4 +1,4 @@
-export type AuthMode = "login" | "register" | "forgot-password";
+export type AuthMode = "login" | "register";
 
 export interface LoginCredentials {
   email: string;
@@ -33,27 +33,6 @@ export interface RegisterFormErrors {
   form?: string;
 }
 
-export interface ForgotPasswordFormErrors {
-  email?: string;
-  form?: string;
-}
-
-export interface ResetPasswordPayload {
-  token: string;
-  newPassword: string;
-}
-
-export interface ResetPasswordFormValues {
-  newPassword: string;
-  confirmPassword: string;
-}
-
-export interface ResetPasswordFormErrors {
-  newPassword?: string;
-  confirmPassword?: string;
-  form?: string;
-}
-
 export interface AuthUser {
   id: string;
   name: string;
@@ -73,16 +52,4 @@ export interface RegisterResult {
   status: number;
   message: string;
   user: AuthUser;
-}
-
-export interface ForgotPasswordResult {
-  ok: boolean;
-  status: number;
-  message: string;
-}
-
-export interface ResetPasswordResult {
-  ok: boolean;
-  status: number;
-  message: string;
 }
