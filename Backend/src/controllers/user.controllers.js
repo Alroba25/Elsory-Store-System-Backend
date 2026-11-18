@@ -140,7 +140,7 @@ const login = async (req, res) => {
       { id: user._id, tokenVersion: user.tokenVersion ?? 0 },
       process.env.JWT_SECRET,
       {
-        expiresIn: "1d",
+        expiresIn: "7d",
       },
     );
 
@@ -220,17 +220,16 @@ const changePassword = async (req, res) => {
       });
     }
 
-    if (
-      newPassword.length < 8 ||
-      Buffer.byteLength(newPassword, "utf8") > 72
-    ) {
+    if (newPassword.length < 8 || Buffer.byteLength(newPassword, "utf8") > 72) {
       return res.status(400).json({
         success: false,
         message: "New password must be 8 to 72 bytes",
       });
     }
 
-    const user = await User.findById(req.user._id).select("+password +tokenVersion");
+    const user = await User.findById(req.user._id).select(
+      "+password +tokenVersion",
+    );
 
     const isPasswordValid = await bcrypt.compare(
       currentPassword,
@@ -312,7 +311,11 @@ const forgotPassword = async (req, res) => {
       await user.save();
 
       try {
-        await sendPasswordResetEmail({ email: user.email, token: resetToken });
+        await sendPasswordResetEmail({
+          email: user.email,
+          name: user.name,
+          token: resetToken,
+        });
       } catch (deliveryError) {
         await User.updateOne(
           { _id: user._id, resetPasswordToken: hashedToken },
@@ -354,10 +357,7 @@ const resetPassword = async (req, res) => {
       });
     }
 
-    if (
-      newPassword.length < 8 ||
-      Buffer.byteLength(newPassword, "utf8") > 72
-    ) {
+    if (newPassword.length < 8 || Buffer.byteLength(newPassword, "utf8") > 72) {
       return res.status(400).json({
         success: false,
         message: "Password must be 8 to 72 bytes",
@@ -369,7 +369,9 @@ const resetPassword = async (req, res) => {
     const user = await User.findOne({
       resetPasswordToken: hashedToken,
       resetPasswordExpires: { $gt: Date.now() },
-    }).select("+password +tokenVersion +resetPasswordToken +resetPasswordExpires");
+    }).select(
+      "+password +tokenVersion +resetPasswordToken +resetPasswordExpires",
+    );
 
     if (!user) {
       return res.status(400).json({

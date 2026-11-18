@@ -29,6 +29,11 @@ const startServer = async () => {
     app.listen(PORT, () => {
       console.log(`Server running on http://localhost:${PORT}`);
     });
+    console.log("RESEND CONFIG:", {
+      hasApiKey: Boolean(process.env.RESEND_API_KEY),
+      from: process.env.RESEND_FROM,
+      hasResetUrl: Boolean(process.env.PASSWORD_RESET_URL),
+    });
   } catch (error) {
     console.error("Failed to start server:", error.message);
     process.exit(1);

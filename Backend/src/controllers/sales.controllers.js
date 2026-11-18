@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 const crypto = require("node:crypto");
 const Sale = require("../models/sales.model");
 const Product = require("../models/products.model");
+const Shift = require("../models/shift.model");
 //create sale controller
 
 const createSale = async (req, res) => {
