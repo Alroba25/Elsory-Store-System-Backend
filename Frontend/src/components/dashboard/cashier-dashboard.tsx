@@ -2260,6 +2260,21 @@ export function CashierDashboard({ user }: CashierDashboardProps) {
                         {currentShift.totalWithdrawals} ج.م
                       </span>
                     </div>
+                    <div className="flex items-center justify-between rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-3.5">
+                      <span className="font-semibold text-foreground">
+                        النقدية المتوقعة بالدرج (Cash)
+                      </span>
+                      <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                        {(
+                          currentShift.openingCash +
+                          currentShift.totalCashSales -
+                          currentShift.totalCashRefunds +
+                          currentShift.totalDeposits -
+                          currentShift.totalWithdrawals
+                        ).toFixed(2)}{" "}
+                        ج.م
+                      </span>
+                    </div>
                     {hasVisaActivity ? (
                       <div className="flex items-center justify-between rounded-xl border border-[#2563EB]/30 bg-[#2563EB]/5 p-3.5">
                         <span className="text-muted">مبيعات الفيزا (Visa)</span>
@@ -2381,7 +2396,17 @@ export function CashierDashboard({ user }: CashierDashboardProps) {
                         htmlFor="shift-close-cash"
                         className="block text-xs font-semibold text-foreground"
                       >
-                        النقدية الفعلية بالدرج عند الإغلاق (ج.م)
+                        النقدية الفعلية بالدرج (Cash) — المتوقع:{" "}
+                        {currentShift
+                          ? (
+                              currentShift.openingCash +
+                              currentShift.totalCashSales -
+                              currentShift.totalCashRefunds +
+                              currentShift.totalDeposits -
+                              currentShift.totalWithdrawals
+                            ).toFixed(2)
+                          : "0.00"}{" "}
+                        ج.م
                       </label>
                       <input
                         id="shift-close-cash"
@@ -2392,7 +2417,21 @@ export function CashierDashboard({ user }: CashierDashboardProps) {
                         value={closingCashInput}
                         onChange={(e) => setClosingCashInput(e.target.value)}
                         disabled={isMutatingShift || !currentShift}
-                        placeholder="0.00"
+                        placeholder={
+                          currentShift
+                            ? String(
+                                Number(
+                                  (
+                                    currentShift.openingCash +
+                                    currentShift.totalCashSales -
+                                    currentShift.totalCashRefunds +
+                                    currentShift.totalDeposits -
+                                    currentShift.totalWithdrawals
+                                  ).toFixed(2),
+                                ),
+                              )
+                            : "0.00"
+                        }
                         className="h-11 w-full rounded-xl border border-border bg-background px-4 text-sm text-foreground focus:border-[#2563EB] focus:outline-none disabled:opacity-50"
                       />
                     </div>
@@ -2509,40 +2548,119 @@ export function CashierDashboard({ user }: CashierDashboardProps) {
             </section>
 
             {lastReconciliation ? (
-              <section className="rounded-2xl border border-border bg-surface p-6 space-y-3">
+              <section className="rounded-2xl border border-border bg-surface p-6 space-y-4">
                 <h4 className="text-sm font-bold text-foreground">
-                  نتيجة مطابقة الخزينة عند إغلاق الوردية
+                  نتيجة مطابقة الخزينة ووسائل الدفع عند إغلاق الوردية
                 </h4>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-                  <div className="rounded-xl border border-border bg-background p-3.5">
-                    <span className="text-muted block">النقدية المتوقعة</span>
-                    <strong className="text-sm text-foreground">
-                      {lastReconciliation.expectedCash} ج.م
-                    </strong>
+
+                {/* Cash Drawer Reconciliation */}
+                <div className="space-y-2">
+                  <div className="text-xs font-semibold text-muted">
+                    1. الدرج النقدي (Cash)
                   </div>
-                  <div className="rounded-xl border border-border bg-background p-3.5">
-                    <span className="text-muted block">النقدية الفعلية</span>
-                    <strong className="text-sm text-foreground">
-                      {lastReconciliation.actualCash} ج.م
-                    </strong>
-                  </div>
-                  <div className="rounded-xl border border-border bg-background p-3.5">
-                    <span className="text-muted block">الفارق</span>
-                    <strong className="text-sm text-foreground">
-                      {lastReconciliation.difference} ج.م
-                    </strong>
-                  </div>
-                  <div className="rounded-xl border border-border bg-background p-3.5">
-                    <span className="text-muted block">حالة المطابقة</span>
-                    <strong className="text-sm text-[#2563EB]">
-                      {lastReconciliation.status === "balanced"
-                        ? "متطابقة تماماً"
-                        : lastReconciliation.status === "shortage"
-                          ? "عجز بالخزينة"
-                          : "زيادة بالخزينة"}
-                    </strong>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                    <div className="rounded-xl border border-border bg-background p-3.5">
+                      <span className="text-muted block">
+                        النقدية المتوقعة بالدرج
+                      </span>
+                      <strong className="text-sm text-foreground">
+                        {lastReconciliation.expectedCash} ج.م
+                      </strong>
+                    </div>
+                    <div className="rounded-xl border border-border bg-background p-3.5">
+                      <span className="text-muted block">
+                        النقدية الفعلية بالدرج
+                      </span>
+                      <strong className="text-sm text-foreground">
+                        {lastReconciliation.actualCash} ج.م
+                      </strong>
+                    </div>
+                    <div className="rounded-xl border border-border bg-background p-3.5">
+                      <span className="text-muted block">الفارق</span>
+                      <strong className="text-sm text-foreground">
+                        {lastReconciliation.difference} ج.م
+                      </strong>
+                    </div>
+                    <div className="rounded-xl border border-border bg-background p-3.5">
+                      <span className="text-muted block">حالة المطابقة</span>
+                      <strong className="text-sm text-[#2563EB]">
+                        {lastReconciliation.status === "balanced"
+                          ? "متطابقة تماماً"
+                          : lastReconciliation.status === "shortage"
+                            ? "عجز بالخزينة"
+                            : "زيادة بالخزينة"}
+                      </strong>
+                    </div>
                   </div>
                 </div>
+
+                {/* Non-Cash Channels Reconciliation */}
+                {[
+                  {
+                    key: "visa",
+                    title: "ماكينة الفيزا (Visa)",
+                    expected: lastReconciliation.expectedVisa,
+                    actual: lastReconciliation.actualVisa,
+                    diff: lastReconciliation.visaDifference ?? 0,
+                  },
+                  {
+                    key: "instapay",
+                    title: "إنستا باي (InstaPay)",
+                    expected: lastReconciliation.expectedInstapay,
+                    actual: lastReconciliation.actualInstapay,
+                    diff: lastReconciliation.instapayDifference ?? 0,
+                  },
+                  {
+                    key: "wallet",
+                    title: "المحافظ الإلكترونية (Wallet)",
+                    expected: lastReconciliation.expectedWallet,
+                    actual: lastReconciliation.actualWallet,
+                    diff: lastReconciliation.walletDifference ?? 0,
+                  },
+                ]
+                  .filter(
+                    (ch) =>
+                      ch.expected !== undefined &&
+                      ch.actual !== undefined &&
+                      (ch.expected > 0 || ch.actual > 0 || ch.diff !== 0),
+                  )
+                  .map((ch) => (
+                    <div key={ch.key} className="space-y-2 pt-2 border-t border-border">
+                      <div className="text-xs font-semibold text-[#2563EB]">
+                        {ch.title}
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                        <div className="rounded-xl border border-[#2563EB]/25 bg-[#2563EB]/5 p-3.5">
+                          <span className="text-muted block">المتوقع</span>
+                          <strong className="text-sm text-foreground">
+                            {ch.expected} ج.م
+                          </strong>
+                        </div>
+                        <div className="rounded-xl border border-[#2563EB]/25 bg-[#2563EB]/5 p-3.5">
+                          <span className="text-muted block">الفعلي</span>
+                          <strong className="text-sm text-foreground">
+                            {ch.actual} ج.م
+                          </strong>
+                        </div>
+                        <div className="rounded-xl border border-[#2563EB]/25 bg-[#2563EB]/5 p-3.5">
+                          <span className="text-muted block">الفارق</span>
+                          <strong className="text-sm text-foreground">
+                            {ch.diff} ج.م
+                          </strong>
+                        </div>
+                        <div className="rounded-xl border border-[#2563EB]/25 bg-[#2563EB]/5 p-3.5">
+                          <span className="text-muted block">حالة المطابقة</span>
+                          <strong className="text-sm text-[#2563EB]">
+                            {ch.diff === 0
+                              ? "متطابقة تماماً"
+                              : ch.diff < 0
+                                ? "عجز"
+                                : "زيادة"}
+                          </strong>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
               </section>
             ) : null}
           </div>

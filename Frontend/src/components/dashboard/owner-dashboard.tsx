@@ -3009,15 +3009,54 @@ export function OwnerDashboard({ user }: OwnerDashboardProps) {
                             {rep.openShifts} • مغلقة: {rep.closedShifts})
                           </div>
                           <div>
-                            المبيعات النقدية:{" "}
+                            المبيعات النقدية (Cash):{" "}
                             <strong className="text-success">
                               {rep.totalCashSales} ج.م
                             </strong>
                           </div>
                           <div>
-                            العجز: {rep.totalShortage} ج.م • الزيادة:{" "}
+                            عجز الدرج: {rep.totalShortage} ج.م • زيادة الدرج:{" "}
                             {rep.totalOverage} ج.م
                           </div>
+                          {rep.totalVisaSales > 0 ||
+                          rep.totalVisaShortage > 0 ||
+                          rep.totalVisaOverage > 0 ? (
+                            <div className="text-[#2563EB]">
+                              الفيزا (Visa): {rep.totalVisaSales} ج.م
+                              {rep.totalVisaShortage > 0
+                                ? ` • عجز: ${rep.totalVisaShortage}`
+                                : ""}
+                              {rep.totalVisaOverage > 0
+                                ? ` • زيادة: ${rep.totalVisaOverage}`
+                                : ""}
+                            </div>
+                          ) : null}
+                          {rep.totalInstapaySales > 0 ||
+                          rep.totalInstapayShortage > 0 ||
+                          rep.totalInstapayOverage > 0 ? (
+                            <div className="text-[#2563EB]">
+                              إنستا باي (InstaPay): {rep.totalInstapaySales} ج.م
+                              {rep.totalInstapayShortage > 0
+                                ? ` • عجز: ${rep.totalInstapayShortage}`
+                                : ""}
+                              {rep.totalInstapayOverage > 0
+                                ? ` • زيادة: ${rep.totalInstapayOverage}`
+                                : ""}
+                            </div>
+                          ) : null}
+                          {rep.totalWalletSales > 0 ||
+                          rep.totalWalletShortage > 0 ||
+                          rep.totalWalletOverage > 0 ? (
+                            <div className="text-[#2563EB]">
+                              المحافظ (Wallet): {rep.totalWalletSales} ج.م
+                              {rep.totalWalletShortage > 0
+                                ? ` • عجز: ${rep.totalWalletShortage}`
+                                : ""}
+                              {rep.totalWalletOverage > 0
+                                ? ` • زيادة: ${rep.totalWalletOverage}`
+                                : ""}
+                            </div>
+                          ) : null}
                         </div>
                       ))}
                     </div>
@@ -3045,9 +3084,24 @@ export function OwnerDashboard({ user }: OwnerDashboardProps) {
                               <div className="font-bold text-foreground">
                                 الكاشير: {sh.cashierName}
                               </div>
-                              <div className="text-muted">
-                                الافتتاح: {sh.openingCash} ج.م • المبيعات
-                                النقدية: {sh.totalCashSales} ج.م
+                              <div className="flex flex-wrap items-center gap-2 text-muted">
+                                <span>الافتتاح: {sh.openingCash} ج.م</span>
+                                <span>• المبيعات النقدية: {sh.totalCashSales} ج.م</span>
+                                {sh.totalVisaSales > 0 ? (
+                                  <span className="text-[#2563EB]">
+                                    • فيزا: {sh.totalVisaSales} ج.م
+                                  </span>
+                                ) : null}
+                                {sh.totalInstapaySales > 0 ? (
+                                  <span className="text-[#2563EB]">
+                                    • إنستا باي: {sh.totalInstapaySales} ج.م
+                                  </span>
+                                ) : null}
+                                {sh.totalWalletSales > 0 ? (
+                                  <span className="text-[#2563EB]">
+                                    • محفظة: {sh.totalWalletSales} ج.م
+                                  </span>
+                                ) : null}
                               </div>
                             </div>
                             <button
@@ -3169,7 +3223,7 @@ export function OwnerDashboard({ user }: OwnerDashboardProps) {
                 </div>
 
                 {selectedShiftDetail ? (
-                  <div className="rounded-2xl border border-border bg-background p-5 space-y-3 text-xs">
+                  <div className="rounded-2xl border border-border bg-background p-5 space-y-4 text-xs">
                     <div className="flex items-center justify-between border-b border-border pb-2">
                       <h5 className="font-bold text-sm text-foreground">
                         تفاصيل الوردية — الكاشير:{" "}
@@ -3183,21 +3237,115 @@ export function OwnerDashboard({ user }: OwnerDashboardProps) {
                         إغلاق
                       </button>
                     </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      <div className="rounded-lg border border-border bg-surface p-2.5">
-                        الافتتاح: {selectedShiftDetail.openingCash} ج.م
+                    <div className="space-y-2">
+                      <div className="font-semibold text-muted">
+                        تفاصيل الدرج النقدي (Cash)
                       </div>
-                      <div className="rounded-lg border border-border bg-surface p-2.5">
-                        المبيعات النقدية: {selectedShiftDetail.totalCashSales}{" "}
-                        ج.م
-                      </div>
-                      <div className="rounded-lg border border-border bg-surface p-2.5">
-                        الإيداعات: {selectedShiftDetail.totalDeposits} ج.م
-                      </div>
-                      <div className="rounded-lg border border-border bg-surface p-2.5">
-                        المسحوبات: {selectedShiftDetail.totalWithdrawals} ج.م
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div className="rounded-lg border border-border bg-surface p-2.5">
+                          الافتتاح: {selectedShiftDetail.openingCash} ج.م
+                        </div>
+                        <div className="rounded-lg border border-border bg-surface p-2.5">
+                          المبيعات النقدية: {selectedShiftDetail.totalCashSales}{" "}
+                          ج.م
+                        </div>
+                        <div className="rounded-lg border border-border bg-surface p-2.5">
+                          المرتجعات النقدية:{" "}
+                          {selectedShiftDetail.totalCashRefunds} ج.م
+                        </div>
+                        <div className="rounded-lg border border-border bg-surface p-2.5">
+                          الإيداعات / المسحوبات: +
+                          {selectedShiftDetail.totalDeposits} / -
+                          {selectedShiftDetail.totalWithdrawals} ج.م
+                        </div>
+                        {selectedShiftDetail.expectedCash !== undefined ? (
+                          <div className="rounded-lg border border-border bg-surface p-2.5">
+                            المتوقع بالدرج: {selectedShiftDetail.expectedCash}{" "}
+                            ج.م
+                          </div>
+                        ) : null}
+                        {selectedShiftDetail.closingCash !== undefined ? (
+                          <div className="rounded-lg border border-border bg-surface p-2.5">
+                            الفعلي عند الإغلاق:{" "}
+                            {selectedShiftDetail.closingCash} ج.م
+                          </div>
+                        ) : null}
+                        {selectedShiftDetail.difference !== undefined ? (
+                          <div className="rounded-lg border border-border bg-surface p-2.5">
+                            فارق الدرج: {selectedShiftDetail.difference} ج.م
+                          </div>
+                        ) : null}
                       </div>
                     </div>
+
+                    {[
+                      {
+                        key: "visa",
+                        title: "ماكينة الفيزا (Visa)",
+                        sales: selectedShiftDetail.totalVisaSales,
+                        refunds: selectedShiftDetail.totalVisaRefunds,
+                        expected: selectedShiftDetail.expectedVisa,
+                        closing: selectedShiftDetail.closingVisa,
+                        diff: selectedShiftDetail.visaDifference,
+                      },
+                      {
+                        key: "instapay",
+                        title: "إنستا باي (InstaPay)",
+                        sales: selectedShiftDetail.totalInstapaySales,
+                        refunds: selectedShiftDetail.totalInstapayRefunds,
+                        expected: selectedShiftDetail.expectedInstapay,
+                        closing: selectedShiftDetail.closingInstapay,
+                        diff: selectedShiftDetail.instapayDifference,
+                      },
+                      {
+                        key: "wallet",
+                        title: "المحافظ الإلكترونية (Wallet)",
+                        sales: selectedShiftDetail.totalWalletSales,
+                        refunds: selectedShiftDetail.totalWalletRefunds,
+                        expected: selectedShiftDetail.expectedWallet,
+                        closing: selectedShiftDetail.closingWallet,
+                        diff: selectedShiftDetail.walletDifference,
+                      },
+                    ]
+                      .filter(
+                        (ch) =>
+                          ch.sales > 0 ||
+                          ch.refunds > 0 ||
+                          (ch.closing !== undefined && ch.closing > 0),
+                      )
+                      .map((ch) => (
+                        <div
+                          key={ch.key}
+                          className="space-y-2 border-t border-border pt-3"
+                        >
+                          <div className="font-semibold text-[#2563EB]">
+                            {ch.title}
+                          </div>
+                          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                            <div className="rounded-lg border border-[#2563EB]/25 bg-[#2563EB]/5 p-2.5">
+                              المبيعات: {ch.sales} ج.م
+                            </div>
+                            <div className="rounded-lg border border-[#2563EB]/25 bg-[#2563EB]/5 p-2.5">
+                              المرتجعات: {ch.refunds} ج.م
+                            </div>
+                            {ch.expected !== undefined ? (
+                              <div className="rounded-lg border border-[#2563EB]/25 bg-[#2563EB]/5 p-2.5">
+                                المتوقع: {ch.expected} ج.م
+                              </div>
+                            ) : null}
+                            {ch.closing !== undefined ? (
+                              <div className="rounded-lg border border-[#2563EB]/25 bg-[#2563EB]/5 p-2.5">
+                                الفعلي: {ch.closing} ج.م
+                              </div>
+                            ) : null}
+                            {ch.diff !== undefined ? (
+                              <div className="rounded-lg border border-[#2563EB]/25 bg-[#2563EB]/5 p-2.5">
+                                الفارق: {ch.diff} ج.م
+                              </div>
+                            ) : null}
+                          </div>
+                        </div>
+                      ))}
                   </div>
                 ) : null}
               </div>

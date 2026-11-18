@@ -375,10 +375,28 @@ export interface ShiftReportGroup {
   openShifts: number;
   totalCashSales: number;
   totalCashRefunds: number;
+  totalVisaSales: number;
+  totalVisaRefunds: number;
+  totalInstapaySales: number;
+  totalInstapayRefunds: number;
+  totalWalletSales: number;
+  totalWalletRefunds: number;
   totalDeposits: number;
   totalWithdrawals: number;
   totalShortage: number;
   totalOverage: number;
+  totalVisaShortage: number;
+  totalVisaOverage: number;
+  totalInstapayShortage: number;
+  totalInstapayOverage: number;
+  totalWalletShortage: number;
+  totalWalletOverage: number;
+}
+
+export interface PaymentMethodReportBreakdown {
+  collected: number;
+  refunded: number;
+  net: number;
 }
 
 export interface SalesTimelinePoint {
@@ -426,6 +444,12 @@ export interface SalesReportData {
   };
   netSalesAfterReturns: number;
   netCashFlow: number;
+  paymentMethods?: {
+    cash: PaymentMethodReportBreakdown;
+    visa: PaymentMethodReportBreakdown;
+    instapay: PaymentMethodReportBreakdown;
+    wallet: PaymentMethodReportBreakdown;
+  };
   timeline: SalesTimelinePoint[];
 }
 
@@ -1637,10 +1661,22 @@ export async function fetchShiftReportsForOwner(params?: {
     openShifts: asNumber(r.openShifts, 0),
     totalCashSales: asNumber(r.totalCashSales, 0),
     totalCashRefunds: asNumber(r.totalCashRefunds, 0),
+    totalVisaSales: asNumber(r.totalVisaSales, 0),
+    totalVisaRefunds: asNumber(r.totalVisaRefunds, 0),
+    totalInstapaySales: asNumber(r.totalInstapaySales, 0),
+    totalInstapayRefunds: asNumber(r.totalInstapayRefunds, 0),
+    totalWalletSales: asNumber(r.totalWalletSales, 0),
+    totalWalletRefunds: asNumber(r.totalWalletRefunds, 0),
     totalDeposits: asNumber(r.totalDeposits, 0),
     totalWithdrawals: asNumber(r.totalWithdrawals, 0),
     totalShortage: asNumber(r.totalShortage, 0),
     totalOverage: asNumber(r.totalOverage, 0),
+    totalVisaShortage: asNumber(r.totalVisaShortage, 0),
+    totalVisaOverage: asNumber(r.totalVisaOverage, 0),
+    totalInstapayShortage: asNumber(r.totalInstapayShortage, 0),
+    totalInstapayOverage: asNumber(r.totalInstapayOverage, 0),
+    totalWalletShortage: asNumber(r.totalWalletShortage, 0),
+    totalWalletOverage: asNumber(r.totalWalletOverage, 0),
   }));
 }
 
@@ -1706,6 +1742,20 @@ export async function fetchSalesReportForOwner(
   const rawTimeline = Array.isArray(report.timeline)
     ? report.timeline.filter(isRecord)
     : [];
+  const rawPaymentMethods = isRecord(report.paymentMethods)
+    ? report.paymentMethods
+    : null;
+  const parseMethodBreakdown = (key: string): PaymentMethodReportBreakdown => {
+    const entry =
+      rawPaymentMethods && isRecord(rawPaymentMethods[key])
+        ? (rawPaymentMethods[key] as JsonRecord)
+        : {};
+    return {
+      collected: asNumber(entry.collected, 0),
+      refunded: asNumber(entry.refunded, 0),
+      net: asNumber(entry.net, 0),
+    };
+  };
 
   return {
     period: {
@@ -1741,6 +1791,14 @@ export async function fetchSalesReportForOwner(
     },
     netSalesAfterReturns: asNumber(report.netSalesAfterReturns, 0),
     netCashFlow: asNumber(report.netCashFlow, 0),
+    paymentMethods: rawPaymentMethods
+      ? {
+          cash: parseMethodBreakdown("cash"),
+          visa: parseMethodBreakdown("visa"),
+          instapay: parseMethodBreakdown("instapay"),
+          wallet: parseMethodBreakdown("wallet"),
+        }
+      : undefined,
     timeline: rawTimeline.map((row) => ({
       date: asString(row.date),
       invoicesCount: asNumber(row.invoicesCount, 0),

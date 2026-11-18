@@ -989,6 +989,74 @@ export function OwnerAnalyticsWorkspace({
                 </div>
               </div>
 
+              {/* Payment Methods Breakdown (Cash vs Visa vs InstaPay vs Wallet) */}
+              {salesReport.paymentMethods ? (
+                <div className="rounded-2xl border border-border bg-surface p-5 space-y-4">
+                  <div>
+                    <h4 className="text-sm font-bold text-foreground">
+                      تفصيل التحصيل والمرتجعات حسب طريقة الدفع
+                    </h4>
+                    <p className="text-[11px] text-muted">
+                      فصل كامل بين الكاش بالدرج وماكينة الفيزا وInstaPay والمحافظ
+                      الإلكترونية
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    {[
+                      {
+                        key: "cash",
+                        label: "النقدي (Cash)",
+                        data: salesReport.paymentMethods.cash,
+                      },
+                      {
+                        key: "visa",
+                        label: "الفيزا (Visa)",
+                        data: salesReport.paymentMethods.visa,
+                      },
+                      {
+                        key: "instapay",
+                        label: "إنستا باي (InstaPay)",
+                        data: salesReport.paymentMethods.instapay,
+                      },
+                      {
+                        key: "wallet",
+                        label: "المحافظ الإلكترونية (Wallet)",
+                        data: salesReport.paymentMethods.wallet,
+                      },
+                    ].map((channel) => (
+                      <div
+                        key={channel.key}
+                        className="rounded-xl border border-border bg-background p-4 space-y-2 text-xs"
+                      >
+                        <div className="font-bold text-foreground">
+                          {channel.label}
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-muted">المحصل:</span>
+                          <strong className="text-success">
+                            {formatEgp(channel.data.collected)}
+                          </strong>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-muted">المرتجع المسترد:</span>
+                          <strong className="text-danger">
+                            {formatEgp(channel.data.refunded)}
+                          </strong>
+                        </div>
+                        <div className="flex items-center justify-between border-t border-border pt-2">
+                          <span className="font-semibold text-foreground">
+                            الصافي:
+                          </span>
+                          <strong className="text-[#2563EB]">
+                            {formatEgp(channel.data.net)}
+                          </strong>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
               {/* Sales Charts */}
               <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
                 <SvgDonutChart
