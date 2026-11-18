@@ -327,6 +327,11 @@ const forgotPassword = async (req, res) => {
           "Password reset email delivery failed:",
           deliveryError.message,
         );
+        return res.status(502).json({
+          success: false,
+          message:
+            "تعذر إرسال رسالة استعادة كلمة المرور حالياً. يرجى التحقق من إعدادات البريد على السيرفر.",
+        });
       }
     }
 

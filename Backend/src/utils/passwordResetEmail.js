@@ -5,6 +5,12 @@ const nodemailer = require("nodemailer");
 
 const ENV_FILE_PATH = path.resolve(__dirname, "../../.env");
 
+const hasResendEnv = () =>
+  Boolean(
+    process.env.RESEND_API_KEY?.trim() &&
+      process.env.PASSWORD_RESET_URL?.trim(),
+  );
+
 const hasRequiredSmtpEnv = () =>
   Boolean(
     process.env.SMTP_HOST?.trim() &&
@@ -15,10 +21,10 @@ const hasRequiredSmtpEnv = () =>
   );
 
 const isPasswordResetEmailConfigured = () => {
-  if (!hasRequiredSmtpEnv()) {
+  if (!hasResendEnv() && !hasRequiredSmtpEnv()) {
     dotenv.config({ path: ENV_FILE_PATH, override: true });
   }
-  return hasRequiredSmtpEnv();
+  return hasResendEnv() || hasRequiredSmtpEnv();
 };
 
 function escapeHtml(value) {
@@ -248,6 +254,7 @@ function createSmtpTransporter() {
     host,
     port,
     secure,
+    family: 4,
     auth: {
       user,
       pass,
@@ -256,6 +263,43 @@ function createSmtpTransporter() {
     greetingTimeout: 10_000,
     socketTimeout: 15_000,
   });
+}
+
+async function sendViaResend({ email, name, resetLink, logoSrc }) {
+  const apiKey = process.env.RESEND_API_KEY.trim();
+  const from =
+    process.env.RESEND_FROM?.trim() ||
+    (process.env.SMTP_USER?.trim()
+      ? `"ELSORY STORE" <${process.env.SMTP_USER.trim()}>`
+      : "ELSORY STORE <onboarding@resend.dev>");
+
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from,
+      to: [email.trim()],
+      subject: "إعادة تعيين كلمة المرور | ELSORY STORE",
+      text: buildPasswordResetEmailText({ userName: name, resetLink }),
+      html: buildPasswordResetEmailHtml({
+        userName: name,
+        resetLink,
+        logoSrc,
+      }),
+    }),
+  });
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => "");
+    throw new Error(
+      `RESEND_EMAIL_FAILED_${response.status}: ${body.slice(0, 200)}`,
+    );
+  }
+
+  return response.json();
 }
 
 const sendPasswordResetEmail = async ({ email, name, token }) => {
@@ -276,6 +320,18 @@ const sendPasswordResetEmail = async ({ email, name, token }) => {
   const resetLink = resetUrl.toString();
 
   const { logoSrc, attachments } = resolveLogoConfiguration(resetUrl);
+
+  if (hasResendEnv()) {
+    const httpsLogoSrc =
+      logoSrc && logoSrc.startsWith("https://") ? logoSrc : null;
+    return sendViaResend({
+      email,
+      name,
+      resetLink,
+      logoSrc: httpsLogoSrc,
+    });
+  }
+
   const smtpUser = process.env.SMTP_USER.trim();
   const transporter = createSmtpTransporter();
 
