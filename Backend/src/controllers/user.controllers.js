@@ -8,6 +8,21 @@ const {
   sendPasswordResetEmail,
 } = require("../utils/passwordResetEmail");
 const { withOwnerMutationLock } = require("../utils/ownerMutationLock");
+
+const isCrossSiteProduction = () =>
+  process.env.NODE_ENV === "production" ||
+  (process.env.CLIENT_URL || "").trim().startsWith("https://");
+
+const getAuthCookieOptions = () => {
+  const crossSite = isCrossSiteProduction();
+  return {
+    httpOnly: true,
+    secure: crossSite,
+    sameSite: crossSite ? "none" : "lax",
+    path: "/",
+  };
+};
+
 const register = async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -145,11 +160,8 @@ const login = async (req, res) => {
     );
 
     res.cookie("token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      ...getAuthCookieOptions(),
       maxAge: 24 * 60 * 60 * 1000,
-      path: "/",
     });
 
     return res.status(200).json({
@@ -172,12 +184,7 @@ const login = async (req, res) => {
   }
 };
 const logout = (req, res) => {
-  res.clearCookie("token", {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-  });
+  res.clearCookie("token", getAuthCookieOptions());
   return res.status(200).json({
     success: true,
     message: "Logout successful",
@@ -256,12 +263,7 @@ const changePassword = async (req, res) => {
     user.tokenVersion = (user.tokenVersion ?? 0) + 1;
     await user.save();
 
-    res.clearCookie("token", {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-    });
+    res.clearCookie("token", getAuthCookieOptions());
 
     return res.status(200).json({
       success: true,
