@@ -331,6 +331,7 @@ const forgotPassword = async (req, res) => {
           success: false,
           message:
             "تعذر إرسال رسالة استعادة كلمة المرور حالياً. يرجى التحقق من إعدادات البريد على السيرفر.",
+          errorCode: deliveryError.message,
         });
       }
     }
