@@ -303,11 +303,26 @@ export interface StoreShiftRecord {
   openingCash: number;
   closingCash?: number;
   totalCashSales: number;
+  totalVisaSales: number;
+  totalInstapaySales: number;
+  totalWalletSales: number;
   totalCashRefunds: number;
+  totalVisaRefunds: number;
+  totalInstapayRefunds: number;
+  totalWalletRefunds: number;
   totalDeposits: number;
   totalWithdrawals: number;
   expectedCash?: number;
   difference?: number;
+  closingVisa?: number;
+  expectedVisa?: number;
+  visaDifference?: number;
+  closingInstapay?: number;
+  expectedInstapay?: number;
+  instapayDifference?: number;
+  closingWallet?: number;
+  expectedWallet?: number;
+  walletDifference?: number;
   movements: ShiftCashMovement[];
   status: "open" | "closed";
   openedAt?: string;
@@ -323,6 +338,15 @@ export interface ShiftSummaryData {
   totalCashRefunds: number;
   totalDeposits: number;
   totalWithdrawals: number;
+  totalVisaSales: number;
+  totalVisaRefunds: number;
+  expectedVisa: number;
+  totalInstapaySales: number;
+  totalInstapayRefunds: number;
+  expectedInstapay: number;
+  totalWalletSales: number;
+  totalWalletRefunds: number;
+  expectedWallet: number;
   expectedCash: number;
   movements: ShiftCashMovement[];
 }
@@ -331,6 +355,15 @@ export interface ShiftReconciliation {
   expectedCash: number;
   actualCash: number;
   difference: number;
+  expectedVisa?: number;
+  actualVisa?: number;
+  visaDifference?: number;
+  expectedInstapay?: number;
+  actualInstapay?: number;
+  instapayDifference?: number;
+  expectedWallet?: number;
+  actualWallet?: number;
+  walletDifference?: number;
   status: "balanced" | "shortage" | "overage";
 }
 
@@ -761,11 +794,26 @@ function normalizeShift(raw: JsonRecord): StoreShiftRecord {
     openingCash: asNumber(raw.openingCash, 0),
     closingCash: asOptionalNumber(raw.closingCash),
     totalCashSales: asNumber(raw.totalCashSales, 0),
+    totalVisaSales: asNumber(raw.totalVisaSales, 0),
+    totalInstapaySales: asNumber(raw.totalInstapaySales, 0),
+    totalWalletSales: asNumber(raw.totalWalletSales, 0),
     totalCashRefunds: asNumber(raw.totalCashRefunds, 0),
+    totalVisaRefunds: asNumber(raw.totalVisaRefunds, 0),
+    totalInstapayRefunds: asNumber(raw.totalInstapayRefunds, 0),
+    totalWalletRefunds: asNumber(raw.totalWalletRefunds, 0),
     totalDeposits: asNumber(raw.totalDeposits, 0),
     totalWithdrawals: asNumber(raw.totalWithdrawals, 0),
     expectedCash: asOptionalNumber(raw.expectedCash),
     difference: asOptionalNumber(raw.difference),
+    closingVisa: asOptionalNumber(raw.closingVisa),
+    expectedVisa: asOptionalNumber(raw.expectedVisa),
+    visaDifference: asOptionalNumber(raw.visaDifference),
+    closingInstapay: asOptionalNumber(raw.closingInstapay),
+    expectedInstapay: asOptionalNumber(raw.expectedInstapay),
+    instapayDifference: asOptionalNumber(raw.instapayDifference),
+    closingWallet: asOptionalNumber(raw.closingWallet),
+    expectedWallet: asOptionalNumber(raw.expectedWallet),
+    walletDifference: asOptionalNumber(raw.walletDifference),
     movements: rawMovements.map((mv) => ({
       id: asString(mv._id ?? mv.id),
       type: mv.type === "withdrawal" ? "withdrawal" : "deposit",
@@ -1403,14 +1451,32 @@ export async function openCashierShift(
   };
 }
 
-export async function closeCashierShift(closingCash: number): Promise<{
+export async function closeCashierShift(
+  closingCash: number,
+  extras?: {
+    closingVisa?: number;
+    closingInstapay?: number;
+    closingWallet?: number;
+  },
+): Promise<{
   message: string;
   shift: StoreShiftRecord;
   reconciliation?: ShiftReconciliation;
 }> {
   const data = await apiRequest<JsonRecord>("/shift/close", {
     method: "PATCH",
-    body: JSON.stringify({ closingCash }),
+    body: JSON.stringify({
+      closingCash,
+      ...(extras?.closingVisa !== undefined
+        ? { closingVisa: extras.closingVisa }
+        : {}),
+      ...(extras?.closingInstapay !== undefined
+        ? { closingInstapay: extras.closingInstapay }
+        : {}),
+      ...(extras?.closingWallet !== undefined
+        ? { closingWallet: extras.closingWallet }
+        : {}),
+    }),
   });
   if (!isRecord(data.shift)) {
     throw new DashboardApiError("تم إغلاق الوردية ولكن تعذر قراءة البيانات");
@@ -1427,6 +1493,21 @@ export async function closeCashierShift(closingCash: number): Promise<{
         expectedCash: asNumber(data.reconciliation.expectedCash, 0),
         actualCash: asNumber(data.reconciliation.actualCash, 0),
         difference: asNumber(data.reconciliation.difference, 0),
+        expectedVisa: asOptionalNumber(data.reconciliation.expectedVisa),
+        actualVisa: asOptionalNumber(data.reconciliation.actualVisa),
+        visaDifference: asOptionalNumber(data.reconciliation.visaDifference),
+        expectedInstapay: asOptionalNumber(
+          data.reconciliation.expectedInstapay,
+        ),
+        actualInstapay: asOptionalNumber(data.reconciliation.actualInstapay),
+        instapayDifference: asOptionalNumber(
+          data.reconciliation.instapayDifference,
+        ),
+        expectedWallet: asOptionalNumber(data.reconciliation.expectedWallet),
+        actualWallet: asOptionalNumber(data.reconciliation.actualWallet),
+        walletDifference: asOptionalNumber(
+          data.reconciliation.walletDifference,
+        ),
         status: reconStatus,
       }
     : undefined;
@@ -1475,6 +1556,15 @@ export async function fetchShiftSummary(): Promise<ShiftSummaryData | null> {
       totalCashRefunds: asNumber(s.totalCashRefunds, 0),
       totalDeposits: asNumber(s.totalDeposits, 0),
       totalWithdrawals: asNumber(s.totalWithdrawals, 0),
+      totalVisaSales: asNumber(s.totalVisaSales, 0),
+      totalVisaRefunds: asNumber(s.totalVisaRefunds, 0),
+      expectedVisa: asNumber(s.expectedVisa, 0),
+      totalInstapaySales: asNumber(s.totalInstapaySales, 0),
+      totalInstapayRefunds: asNumber(s.totalInstapayRefunds, 0),
+      expectedInstapay: asNumber(s.expectedInstapay, 0),
+      totalWalletSales: asNumber(s.totalWalletSales, 0),
+      totalWalletRefunds: asNumber(s.totalWalletRefunds, 0),
+      expectedWallet: asNumber(s.expectedWallet, 0),
       expectedCash: asNumber(s.expectedCash, 0),
       movements: rawMovements.map((mv) => ({
         id: asString(mv._id ?? mv.id),

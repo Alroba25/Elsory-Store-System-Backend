@@ -31,6 +31,12 @@ import type { AuthUser } from "@/src/components/providers/auth-provider";
 import { ROLE_CONFIGURATIONS } from "@/src/components/dashboard/dashboard-config";
 import { DashboardLayout } from "@/src/components/dashboard/dashboard-layout";
 import {
+  DayFilterBar,
+  filterBySelectedDay,
+  toLocalYmd,
+  type DayFilterMode,
+} from "@/src/components/dashboard/day-filter-bar";
+import {
   PrintableSaleInvoiceModal,
   printSaleInvoicePdf,
 } from "@/src/components/dashboard/printable-sale-invoice-modal";
@@ -150,9 +156,26 @@ export function CashierDashboard({ user }: CashierDashboardProps) {
   const [isLoadingShift, setIsLoadingShift] = useState<boolean>(false);
   const [openingCashInput, setOpeningCashInput] = useState<string>("");
   const [closingCashInput, setClosingCashInput] = useState<string>("");
+  const [closingVisaInput, setClosingVisaInput] = useState<string>("");
+  const [closingInstapayInput, setClosingInstapayInput] = useState<string>("");
+  const [closingWalletInput, setClosingWalletInput] = useState<string>("");
   const [isMutatingShift, setIsMutatingShift] = useState<boolean>(false);
   const [lastReconciliation, setLastReconciliation] =
     useState<ShiftReconciliation | null>(null);
+
+  // Day-by-Day Filters (Default = Today)
+  const [salesDayMode, setSalesDayMode] = useState<DayFilterMode>("today");
+  const [salesCustomDate, setSalesCustomDate] = useState<string>(() =>
+    toLocalYmd(),
+  );
+  const [returnsDayMode, setReturnsDayMode] = useState<DayFilterMode>("today");
+  const [returnsCustomDate, setReturnsCustomDate] = useState<string>(() =>
+    toLocalYmd(),
+  );
+  const [shiftsDayMode, setShiftsDayMode] = useState<DayFilterMode>("today");
+  const [shiftsCustomDate, setShiftsCustomDate] = useState<string>(() =>
+    toLocalYmd(),
+  );
 
   // 5. Cash Movements State (POST /shift/movements)
   const [movementType, setMovementType] = useState<CashMovementType>("deposit");
@@ -837,6 +860,21 @@ export function CashierDashboard({ user }: CashierDashboardProps) {
     }
   };
 
+  const hasVisaActivity = Boolean(
+    currentShift &&
+      (currentShift.totalVisaSales > 0 || currentShift.totalVisaRefunds > 0),
+  );
+  const hasInstapayActivity = Boolean(
+    currentShift &&
+      (currentShift.totalInstapaySales > 0 ||
+        currentShift.totalInstapayRefunds > 0),
+  );
+  const hasWalletActivity = Boolean(
+    currentShift &&
+      (currentShift.totalWalletSales > 0 ||
+        currentShift.totalWalletRefunds > 0),
+  );
+
   const handleCloseShift = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const closingCash = Number(closingCashInput);
@@ -845,15 +883,62 @@ export function CashierDashboard({ user }: CashierDashboardProps) {
       closingCash < 0 ||
       isMutatingShift
     ) {
-      toast.error("يرجى إدخال النقدية الفعلية عند الإغلاق");
+      toast.error("يرجى إدخال النقدية الفعلية في الدرج عند الإغلاق");
       return;
+    }
+
+    const extras: {
+      closingVisa?: number;
+      closingInstapay?: number;
+      closingWallet?: number;
+    } = {};
+
+    if (hasVisaActivity) {
+      const val = Number(closingVisaInput);
+      if (closingVisaInput.trim() === "" || !Number.isFinite(val) || val < 0) {
+        toast.error("يرجى إدخال إجمالي مبيعات ماكينة الفيزا (Visa) الفعلي");
+        return;
+      }
+      extras.closingVisa = val;
+    }
+
+    if (hasInstapayActivity) {
+      const val = Number(closingInstapayInput);
+      if (
+        closingInstapayInput.trim() === "" ||
+        !Number.isFinite(val) ||
+        val < 0
+      ) {
+        toast.error("يرجى إدخال إجمالي تحويلات إنستا باي (InstaPay) الفعلي");
+        return;
+      }
+      extras.closingInstapay = val;
+    }
+
+    if (hasWalletActivity) {
+      const val = Number(closingWalletInput);
+      if (
+        closingWalletInput.trim() === "" ||
+        !Number.isFinite(val) ||
+        val < 0
+      ) {
+        toast.error("يرجى إدخال إجمالي المحافظ الإلكترونية (Wallet) الفعلي");
+        return;
+      }
+      extras.closingWallet = val;
     }
 
     setIsMutatingShift(true);
     try {
-      const { message, reconciliation } = await closeCashierShift(closingCash);
+      const { message, reconciliation } = await closeCashierShift(
+        closingCash,
+        extras,
+      );
       toast.success(message);
       setClosingCashInput("");
+      setClosingVisaInput("");
+      setClosingInstapayInput("");
+      setClosingWalletInput("");
       setCurrentShift(null);
       setLastReconciliation(reconciliation ?? null);
       void loadShiftHistoryAndSummary();
@@ -1530,19 +1615,46 @@ export function CashierDashboard({ user }: CashierDashboardProps) {
               </button>
             </form>
 
+            <DayFilterBar
+              mode={salesDayMode}
+              customDate={salesCustomDate}
+              onModeChange={setSalesDayMode}
+              onCustomDateChange={setSalesCustomDate}
+              totalCount={salesList.length}
+              filteredCount={
+                filterBySelectedDay(
+                  salesList,
+                  (s) => s.saleDate,
+                  salesDayMode,
+                  salesCustomDate,
+                ).length
+              }
+              itemLabel="فاتورة"
+            />
+
             {isLoadingSales ? (
               <div className="flex min-h-[200px] items-center justify-center">
                 <Loader2 className="h-6 w-6 animate-spin text-[#2563EB]" />
               </div>
-            ) : salesList.length === 0 ? (
+            ) : filterBySelectedDay(
+                salesList,
+                (s) => s.saleDate,
+                salesDayMode,
+                salesCustomDate,
+              ).length === 0 ? (
               <div className="rounded-2xl border border-dashed border-border bg-background/60 p-8 text-center">
                 <p className="text-sm font-semibold text-foreground">
-                  لا توجد فواتير مبيعات مطابقة
+                  لا توجد فواتير مبيعات مطابقة في هذا اليوم
                 </p>
               </div>
             ) : (
               <div className="divide-y divide-border rounded-xl border border-border bg-background">
-                {salesList.map((sale) => (
+                {filterBySelectedDay(
+                  salesList,
+                  (s) => s.saleDate,
+                  salesDayMode,
+                  salesCustomDate,
+                ).map((sale) => (
                   <div
                     key={sale.id}
                     className="flex flex-wrap items-center justify-between gap-4 p-4"
@@ -1909,19 +2021,46 @@ export function CashierDashboard({ user }: CashierDashboardProps) {
                 </button>
               </div>
 
+              <DayFilterBar
+                mode={returnsDayMode}
+                customDate={returnsCustomDate}
+                onModeChange={setReturnsDayMode}
+                onCustomDateChange={setReturnsCustomDate}
+                totalCount={returnsList.length}
+                filteredCount={
+                  filterBySelectedDay(
+                    returnsList,
+                    (r) => r.returnDate,
+                    returnsDayMode,
+                    returnsCustomDate,
+                  ).length
+                }
+                itemLabel="مرتجع"
+              />
+
               {isLoadingReturns ? (
                 <div className="flex min-h-[180px] items-center justify-center">
                   <Loader2 className="h-6 w-6 animate-spin text-[#2563EB]" />
                 </div>
-              ) : returnsList.length === 0 ? (
+              ) : filterBySelectedDay(
+                  returnsList,
+                  (r) => r.returnDate,
+                  returnsDayMode,
+                  returnsCustomDate,
+                ).length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-border bg-background/60 p-8 text-center">
                   <p className="text-sm font-semibold text-foreground">
-                    لا توجد عمليات مرتجعات مسجلة
+                    لا توجد عمليات مرتجعات مسجلة في هذا اليوم
                   </p>
                 </div>
               ) : (
                 <div className="divide-y divide-border rounded-xl border border-border bg-background">
-                  {returnsList.map((ret) => {
+                  {filterBySelectedDay(
+                    returnsList,
+                    (r) => r.returnDate,
+                    returnsDayMode,
+                    returnsCustomDate,
+                  ).map((ret) => {
                     const canRefund = ret.refundRemainingAmount > 0;
                     const isExpanded = activeRefundReturnId === ret.id;
 
@@ -2121,6 +2260,40 @@ export function CashierDashboard({ user }: CashierDashboardProps) {
                         {currentShift.totalWithdrawals} ج.م
                       </span>
                     </div>
+                    {hasVisaActivity ? (
+                      <div className="flex items-center justify-between rounded-xl border border-[#2563EB]/30 bg-[#2563EB]/5 p-3.5">
+                        <span className="text-muted">مبيعات الفيزا (Visa)</span>
+                        <span className="font-bold text-[#2563EB]">
+                          {currentShift.totalVisaSales -
+                            currentShift.totalVisaRefunds}{" "}
+                          ج.م
+                        </span>
+                      </div>
+                    ) : null}
+                    {hasInstapayActivity ? (
+                      <div className="flex items-center justify-between rounded-xl border border-[#2563EB]/30 bg-[#2563EB]/5 p-3.5">
+                        <span className="text-muted">
+                          تحويلات إنستا باي (InstaPay)
+                        </span>
+                        <span className="font-bold text-[#2563EB]">
+                          {currentShift.totalInstapaySales -
+                            currentShift.totalInstapayRefunds}{" "}
+                          ج.م
+                        </span>
+                      </div>
+                    ) : null}
+                    {hasWalletActivity ? (
+                      <div className="flex items-center justify-between rounded-xl border border-[#2563EB]/30 bg-[#2563EB]/5 p-3.5">
+                        <span className="text-muted">
+                          المحافظ الإلكترونية (Wallet)
+                        </span>
+                        <span className="font-bold text-[#2563EB]">
+                          {currentShift.totalWalletSales -
+                            currentShift.totalWalletRefunds}{" "}
+                          ج.م
+                        </span>
+                      </div>
+                    ) : null}
                   </div>
                 ) : (
                   <div className="rounded-2xl border border-dashed border-border bg-background/60 p-6 text-center">
@@ -2208,7 +2381,7 @@ export function CashierDashboard({ user }: CashierDashboardProps) {
                         htmlFor="shift-close-cash"
                         className="block text-xs font-semibold text-foreground"
                       >
-                        النقدية الفعلية عند الإغلاق (ج.م)
+                        النقدية الفعلية بالدرج عند الإغلاق (ج.م)
                       </label>
                       <input
                         id="shift-close-cash"
@@ -2223,6 +2396,103 @@ export function CashierDashboard({ user }: CashierDashboardProps) {
                         className="h-11 w-full rounded-xl border border-border bg-background px-4 text-sm text-foreground focus:border-[#2563EB] focus:outline-none disabled:opacity-50"
                       />
                     </div>
+
+                    {hasVisaActivity ? (
+                      <div className="space-y-1.5">
+                        <label
+                          htmlFor="shift-close-visa"
+                          className="block text-xs font-semibold text-foreground"
+                        >
+                          إجمالي ماكينة الفيزا (Visa) الفعلي — المتوقع:{" "}
+                          {(
+                            (currentShift?.totalVisaSales ?? 0) -
+                            (currentShift?.totalVisaRefunds ?? 0)
+                          ).toFixed(2)}{" "}
+                          ج.م
+                        </label>
+                        <input
+                          id="shift-close-visa"
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          required
+                          value={closingVisaInput}
+                          onChange={(e) => setClosingVisaInput(e.target.value)}
+                          disabled={isMutatingShift || !currentShift}
+                          placeholder={String(
+                            (currentShift?.totalVisaSales ?? 0) -
+                              (currentShift?.totalVisaRefunds ?? 0),
+                          )}
+                          className="h-11 w-full rounded-xl border border-[#2563EB]/40 bg-background px-4 text-sm text-foreground focus:border-[#2563EB] focus:outline-none disabled:opacity-50"
+                        />
+                      </div>
+                    ) : null}
+
+                    {hasInstapayActivity ? (
+                      <div className="space-y-1.5">
+                        <label
+                          htmlFor="shift-close-instapay"
+                          className="block text-xs font-semibold text-foreground"
+                        >
+                          إجمالي إنستا باي (InstaPay) الفعلي — المتوقع:{" "}
+                          {(
+                            (currentShift?.totalInstapaySales ?? 0) -
+                            (currentShift?.totalInstapayRefunds ?? 0)
+                          ).toFixed(2)}{" "}
+                          ج.م
+                        </label>
+                        <input
+                          id="shift-close-instapay"
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          required
+                          value={closingInstapayInput}
+                          onChange={(e) =>
+                            setClosingInstapayInput(e.target.value)
+                          }
+                          disabled={isMutatingShift || !currentShift}
+                          placeholder={String(
+                            (currentShift?.totalInstapaySales ?? 0) -
+                              (currentShift?.totalInstapayRefunds ?? 0),
+                          )}
+                          className="h-11 w-full rounded-xl border border-[#2563EB]/40 bg-background px-4 text-sm text-foreground focus:border-[#2563EB] focus:outline-none disabled:opacity-50"
+                        />
+                      </div>
+                    ) : null}
+
+                    {hasWalletActivity ? (
+                      <div className="space-y-1.5">
+                        <label
+                          htmlFor="shift-close-wallet"
+                          className="block text-xs font-semibold text-foreground"
+                        >
+                          إجمالي المحافظ الإلكترونية (Wallet) الفعلي — المتوقع:{" "}
+                          {(
+                            (currentShift?.totalWalletSales ?? 0) -
+                            (currentShift?.totalWalletRefunds ?? 0)
+                          ).toFixed(2)}{" "}
+                          ج.م
+                        </label>
+                        <input
+                          id="shift-close-wallet"
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          required
+                          value={closingWalletInput}
+                          onChange={(e) =>
+                            setClosingWalletInput(e.target.value)
+                          }
+                          disabled={isMutatingShift || !currentShift}
+                          placeholder={String(
+                            (currentShift?.totalWalletSales ?? 0) -
+                              (currentShift?.totalWalletRefunds ?? 0),
+                          )}
+                          className="h-11 w-full rounded-xl border border-[#2563EB]/40 bg-background px-4 text-sm text-foreground focus:border-[#2563EB] focus:outline-none disabled:opacity-50"
+                        />
+                      </div>
+                    ) : null}
                   </div>
 
                   <button
@@ -2448,20 +2718,47 @@ export function CashierDashboard({ user }: CashierDashboardProps) {
               </div>
             ) : null}
 
+                <DayFilterBar
+                  mode={shiftsDayMode}
+                  customDate={shiftsCustomDate}
+                  onModeChange={setShiftsDayMode}
+                  onCustomDateChange={setShiftsCustomDate}
+                  totalCount={shiftHistory.length}
+                  filteredCount={
+                    filterBySelectedDay(
+                      shiftHistory,
+                      (sh) => sh.openedAt,
+                      shiftsDayMode,
+                      shiftsCustomDate,
+                    ).length
+                  }
+                  itemLabel="وردية"
+                />
+
             {isLoadingHistory ? (
               <div className="flex min-h-[160px] items-center justify-center">
                 <Loader2 className="h-6 w-6 animate-spin text-[#2563EB]" />
               </div>
-            ) : shiftHistory.length === 0 ? (
+            ) : filterBySelectedDay(
+                shiftHistory,
+                (sh) => sh.openedAt,
+                shiftsDayMode,
+                shiftsCustomDate,
+              ).length === 0 ? (
               <div className="rounded-2xl border border-dashed border-border bg-background/60 p-8 text-center">
                 <History className="mx-auto h-7 w-7 text-muted mb-2" />
                 <p className="text-sm font-semibold text-foreground">
-                  لا يوجد سجل ورديات للعرض حالياً
+                  لا يوجد سجل ورديات للعرض في هذا اليوم
                 </p>
               </div>
             ) : (
               <div className="divide-y divide-border rounded-xl border border-border bg-background">
-                {shiftHistory.map((shift) => (
+                {filterBySelectedDay(
+                  shiftHistory,
+                  (sh) => sh.openedAt,
+                  shiftsDayMode,
+                  shiftsCustomDate,
+                ).map((shift) => (
                   <div
                     key={shift.id}
                     className="flex flex-wrap items-center justify-between gap-4 p-4"
@@ -2473,6 +2770,15 @@ export function CashierDashboard({ user }: CashierDashboardProps) {
                       <div className="flex flex-wrap items-center gap-3 text-xs text-muted">
                         <span>الافتتاح: {shift.openingCash} ج.م</span>
                         <span>المبيعات النقدية: {shift.totalCashSales} ج.م</span>
+                        {shift.totalVisaSales > 0 ? (
+                          <span>فيزا: {shift.totalVisaSales} ج.م</span>
+                        ) : null}
+                        {shift.totalInstapaySales > 0 ? (
+                          <span>إنستا باي: {shift.totalInstapaySales} ج.م</span>
+                        ) : null}
+                        {shift.totalWalletSales > 0 ? (
+                          <span>محفظة: {shift.totalWalletSales} ج.م</span>
+                        ) : null}
                         {shift.closingCash !== undefined ? (
                           <span>الإغلاق الفعلي: {shift.closingCash} ج.م</span>
                         ) : null}

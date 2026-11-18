@@ -32,6 +32,12 @@ import {
   type StoreUserRole,
 } from "@/src/components/dashboard/dashboard-config";
 import { DashboardLayout } from "@/src/components/dashboard/dashboard-layout";
+import {
+  DayFilterBar,
+  filterBySelectedDay,
+  toLocalYmd,
+  type DayFilterMode,
+} from "@/src/components/dashboard/day-filter-bar";
 import { OwnerAnalyticsWorkspace } from "@/src/components/dashboard/owner-analytics-workspace";
 import {
   PrintableProductBarcodesModal,
@@ -71,6 +77,7 @@ import {
   updateSupplierById,
   updateSupplierStatusById,
   updateUserRoleById,
+  type PaymentMethod,
   type PhoneCondition,
   type ProductType,
   type ShiftReportGroup,
@@ -86,6 +93,13 @@ import {
 interface OwnerDashboardProps {
   user: AuthUser;
 }
+
+const OWNER_PAYMENT_METHOD_LABELS: Readonly<Record<PaymentMethod, string>> = {
+  cash: "نقدي (Cash)",
+  wallet: "محفظة إلكترونية (Wallet)",
+  instapay: "إنستا باي (InstaPay)",
+  visa: "فيزا (Visa)",
+};
 
 interface DraftPurchaseItem {
   productName: string;
@@ -302,6 +316,25 @@ export function OwnerDashboard({ user }: OwnerDashboardProps) {
     getTodayDateString(),
   );
   const [isLoadingShifts, setIsLoadingShifts] = useState<boolean>(false);
+
+  // Day-by-Day Filters (Default = Today so yesterday's records stay hidden until selected)
+  const [salesDayMode, setSalesDayMode] = useState<DayFilterMode>("today");
+  const [salesCustomDate, setSalesCustomDate] = useState<string>(() =>
+    toLocalYmd(),
+  );
+  const [purchasesDayMode, setPurchasesDayMode] =
+    useState<DayFilterMode>("today");
+  const [purchasesCustomDate, setPurchasesCustomDate] = useState<string>(() =>
+    toLocalYmd(),
+  );
+  const [returnsDayMode, setReturnsDayMode] = useState<DayFilterMode>("today");
+  const [returnsCustomDate, setReturnsCustomDate] = useState<string>(() =>
+    toLocalYmd(),
+  );
+  const [shiftsDayMode, setShiftsDayMode] = useState<DayFilterMode>("today");
+  const [shiftsCustomDate, setShiftsCustomDate] = useState<string>(() =>
+    toLocalYmd(),
+  );
 
   // 7. Employees & Roles
   const [employees, setEmployees] = useState<StoreUserRecord[]>([]);
@@ -1155,25 +1188,52 @@ export function OwnerDashboard({ user }: OwnerDashboardProps) {
               </button>
             </form>
 
+            <DayFilterBar
+              mode={salesDayMode}
+              customDate={salesCustomDate}
+              onModeChange={setSalesDayMode}
+              onCustomDateChange={setSalesCustomDate}
+              totalCount={sales.length}
+              filteredCount={
+                filterBySelectedDay(
+                  sales,
+                  (s) => s.saleDate,
+                  salesDayMode,
+                  salesCustomDate,
+                ).length
+              }
+              itemLabel="فاتورة"
+            />
+
             {isLoadingSales ? (
               <div className="flex min-h-[180px] items-center justify-center">
                 <Loader2 className="h-6 w-6 animate-spin text-[#2563EB]" />
               </div>
-            ) : sales.length === 0 ? (
+            ) : filterBySelectedDay(
+                sales,
+                (s) => s.saleDate,
+                salesDayMode,
+                salesCustomDate,
+              ).length === 0 ? (
               <div className="rounded-2xl border border-dashed border-border bg-background/60 p-8 text-center">
                 <p className="text-sm font-semibold text-foreground">
-                  لا توجد فواتير مبيعات للعرض حالياً
+                  لا توجد فواتير مبيعات مطابقة في هذا اليوم
                 </p>
               </div>
             ) : (
               <div className="divide-y divide-border rounded-xl border border-border bg-background">
-                {sales.map((sale) => (
+                {filterBySelectedDay(
+                  sales,
+                  (s) => s.saleDate,
+                  salesDayMode,
+                  salesCustomDate,
+                ).map((sale) => (
                   <div
                     key={sale.id}
                     className="flex flex-wrap items-center justify-between gap-4 p-4"
                   >
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
+                    <div className="space-y-1.5">
+                      <div className="flex flex-wrap items-center gap-2">
                         <span
                           dir="ltr"
                           className="text-sm font-bold font-mono text-foreground"
@@ -1183,6 +1243,16 @@ export function OwnerDashboard({ user }: OwnerDashboardProps) {
                         <span className="rounded-md bg-surface px-2 py-0.5 text-[11px] font-semibold text-muted border border-border">
                           {sale.paymentStatus}
                         </span>
+                        {sale.payments.map((pmt, pIdx) => (
+                          <span
+                            key={`${pmt.method}-${pIdx}`}
+                            className="rounded-md border border-[#2563EB]/30 bg-[#2563EB]/10 px-2 py-0.5 text-[11px] font-bold text-[#2563EB]"
+                          >
+                            {OWNER_PAYMENT_METHOD_LABELS[pmt.method] ??
+                              pmt.method}
+                            : {pmt.amount} ج.م
+                          </span>
+                        ))}
                       </div>
                       <div className="flex flex-wrap items-center gap-3 text-xs text-muted">
                         <span>الصافي: {sale.finalAmount} ج.م</span>
@@ -1235,6 +1305,26 @@ export function OwnerDashboard({ user }: OwnerDashboardProps) {
                   >
                     إغلاق
                   </button>
+                </div>
+
+                {/* Paid Payment Methods Breakdown */}
+                <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-surface p-3 text-xs">
+                  <span className="font-bold text-foreground">
+                    طرق الدفع المسجلة:
+                  </span>
+                  {selectedSale.payments.length === 0 ? (
+                    <span className="text-muted">لم تُسجل دفعات</span>
+                  ) : (
+                    selectedSale.payments.map((pmt, pIdx) => (
+                      <span
+                        key={`${pmt.method}-${pIdx}`}
+                        className="rounded-lg border border-[#2563EB]/30 bg-[#2563EB]/10 px-2.5 py-1 font-bold text-[#2563EB]"
+                      >
+                        {OWNER_PAYMENT_METHOD_LABELS[pmt.method] ?? pmt.method}:{" "}
+                        {pmt.amount} ج.م
+                      </span>
+                    ))
+                  )}
                 </div>
 
                 <div className="divide-y divide-border rounded-xl border border-border bg-surface">
@@ -2480,19 +2570,46 @@ export function OwnerDashboard({ user }: OwnerDashboardProps) {
                 </button>
               </div>
 
+              <DayFilterBar
+                mode={purchasesDayMode}
+                customDate={purchasesCustomDate}
+                onModeChange={setPurchasesDayMode}
+                onCustomDateChange={setPurchasesCustomDate}
+                totalCount={purchases.length}
+                filteredCount={
+                  filterBySelectedDay(
+                    purchases,
+                    (p) => p.createdAt,
+                    purchasesDayMode,
+                    purchasesCustomDate,
+                  ).length
+                }
+                itemLabel="فاتورة شراء"
+              />
+
               {isLoadingPurchases ? (
                 <div className="flex min-h-[180px] items-center justify-center">
                   <Loader2 className="h-6 w-6 animate-spin text-[#2563EB]" />
                 </div>
-              ) : purchases.length === 0 ? (
+              ) : filterBySelectedDay(
+                  purchases,
+                  (p) => p.createdAt,
+                  purchasesDayMode,
+                  purchasesCustomDate,
+                ).length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-border bg-background/60 p-8 text-center">
                   <p className="text-sm font-semibold text-foreground">
-                    لا توجد فواتير مشتريات مسجلة حالياً
+                    لا توجد فواتير مشتريات مسجلة في هذا اليوم
                   </p>
                 </div>
               ) : (
                 <div className="divide-y divide-border rounded-xl border border-border bg-background">
-                  {purchases.map((pur) => {
+                  {filterBySelectedDay(
+                    purchases,
+                    (p) => p.createdAt,
+                    purchasesDayMode,
+                    purchasesCustomDate,
+                  ).map((pur) => {
                     const canCancel =
                       pur.status === "draft" &&
                       pur.paidAmount === 0 &&
@@ -2700,19 +2817,46 @@ export function OwnerDashboard({ user }: OwnerDashboardProps) {
               </button>
             </form>
 
+            <DayFilterBar
+              mode={returnsDayMode}
+              customDate={returnsCustomDate}
+              onModeChange={setReturnsDayMode}
+              onCustomDateChange={setReturnsCustomDate}
+              totalCount={returnsList.length}
+              filteredCount={
+                filterBySelectedDay(
+                  returnsList,
+                  (r) => r.returnDate,
+                  returnsDayMode,
+                  returnsCustomDate,
+                ).length
+              }
+              itemLabel="مرتجع"
+            />
+
             {isLoadingReturns ? (
               <div className="flex min-h-[180px] items-center justify-center">
                 <Loader2 className="h-6 w-6 animate-spin text-[#2563EB]" />
               </div>
-            ) : returnsList.length === 0 ? (
+            ) : filterBySelectedDay(
+                returnsList,
+                (r) => r.returnDate,
+                returnsDayMode,
+                returnsCustomDate,
+              ).length === 0 ? (
               <div className="rounded-2xl border border-dashed border-border bg-background/60 p-8 text-center">
                 <p className="text-sm font-semibold text-foreground">
-                  لا توجد مرتجعات مسجلة للعرض حالياً
+                  لا توجد مرتجعات مسجلة في هذا اليوم
                 </p>
               </div>
             ) : (
               <div className="divide-y divide-border rounded-xl border border-border bg-background">
-                {returnsList.map((ret) => (
+                {filterBySelectedDay(
+                  returnsList,
+                  (r) => r.returnDate,
+                  returnsDayMode,
+                  returnsCustomDate,
+                ).map((ret) => (
                   <div
                     key={ret.id}
                     className="flex flex-wrap items-center justify-between gap-4 p-4"
@@ -2929,15 +3073,52 @@ export function OwnerDashboard({ user }: OwnerDashboardProps) {
                   {/* Shift History */}
                   <div className="space-y-3">
                     <h4 className="text-sm font-bold text-foreground">
-                      سجل جميع الورديات ({shiftHistory.length})
+                      سجل الورديات حسب اليوم (
+                      {
+                        filterBySelectedDay(
+                          shiftHistory,
+                          (sh) => sh.openedAt,
+                          shiftsDayMode,
+                          shiftsCustomDate,
+                        ).length
+                      }
+                      )
                     </h4>
-                    {shiftHistory.length === 0 ? (
+
+                    <DayFilterBar
+                      mode={shiftsDayMode}
+                      customDate={shiftsCustomDate}
+                      onModeChange={setShiftsDayMode}
+                      onCustomDateChange={setShiftsCustomDate}
+                      totalCount={shiftHistory.length}
+                      filteredCount={
+                        filterBySelectedDay(
+                          shiftHistory,
+                          (sh) => sh.openedAt,
+                          shiftsDayMode,
+                          shiftsCustomDate,
+                        ).length
+                      }
+                      itemLabel="وردية"
+                    />
+
+                    {filterBySelectedDay(
+                      shiftHistory,
+                      (sh) => sh.openedAt,
+                      shiftsDayMode,
+                      shiftsCustomDate,
+                    ).length === 0 ? (
                       <div className="rounded-xl border border-dashed border-border bg-background/60 p-6 text-center text-xs text-muted">
-                        لا يوجد سجل ورديات
+                        لا يوجد سجل ورديات في هذا اليوم
                       </div>
                     ) : (
                       <div className="space-y-2.5 max-h-80 overflow-y-auto">
-                        {shiftHistory.map((sh) => (
+                        {filterBySelectedDay(
+                          shiftHistory,
+                          (sh) => sh.openedAt,
+                          shiftsDayMode,
+                          shiftsCustomDate,
+                        ).map((sh) => (
                           <div
                             key={sh.id}
                             className="flex items-center justify-between rounded-xl border border-border bg-background p-4 text-xs"
@@ -2946,11 +3127,24 @@ export function OwnerDashboard({ user }: OwnerDashboardProps) {
                               <div className="font-bold text-foreground">
                                 {sh.cashierName} ({sh.status})
                               </div>
-                              <div className="text-muted">
-                                الافتتاح: {sh.openingCash} ج.م
-                                {sh.closingCash !== undefined
-                                  ? ` • الإغلاق: ${sh.closingCash} ج.م`
-                                  : ""}
+                              <div className="flex flex-wrap items-center gap-2 text-muted">
+                                <span>الافتتاح: {sh.openingCash} ج.م</span>
+                                {sh.closingCash !== undefined ? (
+                                  <span>• الإغلاق: {sh.closingCash} ج.م</span>
+                                ) : null}
+                                {sh.totalVisaSales > 0 ? (
+                                  <span>• فيزا: {sh.totalVisaSales} ج.م</span>
+                                ) : null}
+                                {sh.totalInstapaySales > 0 ? (
+                                  <span>
+                                    • إنستا باي: {sh.totalInstapaySales} ج.م
+                                  </span>
+                                ) : null}
+                                {sh.totalWalletSales > 0 ? (
+                                  <span>
+                                    • محفظة: {sh.totalWalletSales} ج.م
+                                  </span>
+                                ) : null}
                               </div>
                             </div>
                             <button
