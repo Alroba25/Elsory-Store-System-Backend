@@ -1128,10 +1128,7 @@ export function CashierDashboard({ user }: CashierDashboardProps) {
                         : Math.max(0, itemTotal - entry.discountAmount);
 
                       return (
-                        <div
-                          key={entry.product.id}
-                          className="p-4 space-y-3"
-                        >
+                        <div key={entry.product.id} className="p-4 space-y-3">
                           <div className="flex flex-wrap items-center justify-between gap-4">
                             <div className="space-y-1">
                               <div className="flex items-center gap-2">
@@ -1633,7 +1630,7 @@ export function CashierDashboard({ user }: CashierDashboardProps) {
             />
 
             {isLoadingSales ? (
-              <div className="flex min-h-[200px] items-center justify-center">
+              <div className="flex min-h-50 items-center justify-center">
                 <Loader2 className="h-6 w-6 animate-spin text-[#2563EB]" />
               </div>
             ) : filterBySelectedDay(
@@ -1783,7 +1780,10 @@ export function CashierDashboard({ user }: CashierDashboardProps) {
                           </span>{" "}
                           <span className="text-muted">({item.brand})</span>
                           {item.imei ? (
-                            <span dir="ltr" className="ml-2 font-mono text-muted">
+                            <span
+                              dir="ltr"
+                              className="ml-2 font-mono text-muted"
+                            >
                               IMEI: {item.imei}
                             </span>
                           ) : null}
@@ -2039,7 +2039,7 @@ export function CashierDashboard({ user }: CashierDashboardProps) {
               />
 
               {isLoadingReturns ? (
-                <div className="flex min-h-[180px] items-center justify-center">
+                <div className="flex min-h-45 items-center justify-center">
                   <Loader2 className="h-6 w-6 animate-spin text-[#2563EB]" />
                 </div>
               ) : filterBySelectedDay(
@@ -2222,7 +2222,7 @@ export function CashierDashboard({ user }: CashierDashboardProps) {
                 </div>
 
                 {isLoadingShift ? (
-                  <div className="flex min-h-[140px] items-center justify-center">
+                  <div className="flex min-h-35 items-center justify-center">
                     <Loader2 className="h-6 w-6 animate-spin text-[#2563EB]" />
                   </div>
                 ) : currentShift ? (
@@ -2625,7 +2625,10 @@ export function CashierDashboard({ user }: CashierDashboardProps) {
                       (ch.expected > 0 || ch.actual > 0 || ch.diff !== 0),
                   )
                   .map((ch) => (
-                    <div key={ch.key} className="space-y-2 pt-2 border-t border-border">
+                    <div
+                      key={ch.key}
+                      className="space-y-2 pt-2 border-t border-border"
+                    >
                       <div className="text-xs font-semibold text-[#2563EB]">
                         {ch.title}
                       </div>
@@ -2649,7 +2652,9 @@ export function CashierDashboard({ user }: CashierDashboardProps) {
                           </strong>
                         </div>
                         <div className="rounded-xl border border-[#2563EB]/25 bg-[#2563EB]/5 p-3.5">
-                          <span className="text-muted block">حالة المطابقة</span>
+                          <span className="text-muted block">
+                            حالة المطابقة
+                          </span>
                           <strong className="text-sm text-[#2563EB]">
                             {ch.diff === 0
                               ? "متطابقة تماماً"
@@ -2836,25 +2841,25 @@ export function CashierDashboard({ user }: CashierDashboardProps) {
               </div>
             ) : null}
 
-                <DayFilterBar
-                  mode={shiftsDayMode}
-                  customDate={shiftsCustomDate}
-                  onModeChange={setShiftsDayMode}
-                  onCustomDateChange={setShiftsCustomDate}
-                  totalCount={shiftHistory.length}
-                  filteredCount={
-                    filterBySelectedDay(
-                      shiftHistory,
-                      (sh) => sh.openedAt,
-                      shiftsDayMode,
-                      shiftsCustomDate,
-                    ).length
-                  }
-                  itemLabel="وردية"
-                />
+            <DayFilterBar
+              mode={shiftsDayMode}
+              customDate={shiftsCustomDate}
+              onModeChange={setShiftsDayMode}
+              onCustomDateChange={setShiftsCustomDate}
+              totalCount={shiftHistory.length}
+              filteredCount={
+                filterBySelectedDay(
+                  shiftHistory,
+                  (sh) => sh.openedAt,
+                  shiftsDayMode,
+                  shiftsCustomDate,
+                ).length
+              }
+              itemLabel="وردية"
+            />
 
             {isLoadingHistory ? (
-              <div className="flex min-h-[160px] items-center justify-center">
+              <div className="flex min-h-40 items-center justify-center">
                 <Loader2 className="h-6 w-6 animate-spin text-[#2563EB]" />
               </div>
             ) : filterBySelectedDay(
@@ -2887,7 +2892,9 @@ export function CashierDashboard({ user }: CashierDashboardProps) {
                       </div>
                       <div className="flex flex-wrap items-center gap-3 text-xs text-muted">
                         <span>الافتتاح: {shift.openingCash} ج.م</span>
-                        <span>المبيعات النقدية: {shift.totalCashSales} ج.م</span>
+                        <span>
+                          المبيعات النقدية: {shift.totalCashSales} ج.م
+                        </span>
                         {shift.totalVisaSales > 0 ? (
                           <span>فيزا: {shift.totalVisaSales} ج.م</span>
                         ) : null}
