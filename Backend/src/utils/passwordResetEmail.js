@@ -5,6 +5,13 @@ const nodemailer = require("nodemailer");
 
 const ENV_FILE_PATH = path.resolve(__dirname, "../../.env");
 
+const hasBrevoEnv = () =>
+  Boolean(
+    process.env.BREVO_API_KEY?.trim() &&
+      (process.env.BREVO_SENDER_EMAIL?.trim() || process.env.SMTP_USER?.trim()) &&
+      process.env.PASSWORD_RESET_URL?.trim(),
+  );
+
 const hasResendEnv = () =>
   Boolean(
     process.env.RESEND_API_KEY?.trim() &&
@@ -21,10 +28,10 @@ const hasRequiredSmtpEnv = () =>
   );
 
 const isPasswordResetEmailConfigured = () => {
-  if (!hasResendEnv() && !hasRequiredSmtpEnv()) {
+  if (!hasBrevoEnv() && !hasResendEnv() && !hasRequiredSmtpEnv()) {
     dotenv.config({ path: ENV_FILE_PATH, override: true });
   }
-  return hasResendEnv() || hasRequiredSmtpEnv();
+  return hasBrevoEnv() || hasResendEnv() || hasRequiredSmtpEnv();
 };
 
 function escapeHtml(value) {
@@ -265,13 +272,45 @@ function createSmtpTransporter() {
   });
 }
 
+async function sendViaBrevo({ email, name, resetLink, logoSrc }) {
+  const apiKey = process.env.BREVO_API_KEY.trim();
+  const senderEmail =
+    process.env.BREVO_SENDER_EMAIL?.trim() || process.env.SMTP_USER?.trim();
+
+  const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+    method: "POST",
+    headers: {
+      "api-key": apiKey,
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify({
+      sender: { name: "ELSORY STORE", email: senderEmail },
+      to: [{ email: email.trim(), name: name?.trim() || undefined }],
+      subject: "إعادة تعيين كلمة المرور | ELSORY STORE",
+      textContent: buildPasswordResetEmailText({ userName: name, resetLink }),
+      htmlContent: buildPasswordResetEmailHtml({
+        userName: name,
+        resetLink,
+        logoSrc,
+      }),
+    }),
+  });
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => "");
+    throw new Error(
+      `BREVO_EMAIL_FAILED_${response.status}: ${body.slice(0, 200)}`,
+    );
+  }
+
+  return response.json();
+}
+
 async function sendViaResend({ email, name, resetLink, logoSrc }) {
   const apiKey = process.env.RESEND_API_KEY.trim();
   const from =
-    process.env.RESEND_FROM?.trim() ||
-    (process.env.SMTP_USER?.trim()
-      ? `"ELSORY STORE" <${process.env.SMTP_USER.trim()}>`
-      : "ELSORY STORE <onboarding@resend.dev>");
+    process.env.RESEND_FROM?.trim() || "ELSORY STORE <onboarding@resend.dev>";
 
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -320,6 +359,17 @@ const sendPasswordResetEmail = async ({ email, name, token }) => {
   const resetLink = resetUrl.toString();
 
   const { logoSrc, attachments } = resolveLogoConfiguration(resetUrl);
+
+  if (hasBrevoEnv()) {
+    const httpsLogoSrc =
+      logoSrc && logoSrc.startsWith("https://") ? logoSrc : null;
+    return sendViaBrevo({
+      email,
+      name,
+      resetLink,
+      logoSrc: httpsLogoSrc,
+    });
+  }
 
   if (hasResendEnv()) {
     const httpsLogoSrc =
